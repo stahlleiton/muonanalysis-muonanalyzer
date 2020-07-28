@@ -16,21 +16,20 @@
 #include "NtupleContent.h"
 #include "helper.h"
 
-class KlFitter{
-  public:
-    KlFitter(std::vector<reco::TransientTrack> &);
-    ~KlFitter();
+class KlFitter {
+public:
+  KlFitter(std::vector<reco::TransientTrack> &);
+  ~KlFitter();
 
-    void fillNtuple( NtupleContent &nt);
-    bool status(){ return  status_;}
-    float prob(){ return prob_; }
+  void fillNtuple(NtupleContent &nt);
+  bool status() { return status_; }
+  float prob() { return prob_; }
 
-  private:
-    TransientVertex dimuvtx;
-    std::vector<reco::TransientTrack> refited;
-    bool status_=true;
-    float prob_=0;    
+private:
+  TransientVertex dimuvtx;
+  std::vector<reco::TransientTrack> refited;
+  bool status_ = true;
+  float prob_ = 0;
 };
-
 
 #endif
