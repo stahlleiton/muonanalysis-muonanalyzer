@@ -15,21 +15,20 @@
 #include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 
+class MuonGenAnalyzer {
+public:
+  MuonGenAnalyzer();
+  virtual ~MuonGenAnalyzer();
 
-class MuonGenAnalyzer{
-  public:
-    MuonGenAnalyzer();
-    virtual ~MuonGenAnalyzer();
+  void SetInputs(const edm::Event &, const edm::EDGetTokenT<edm::View<reco::GenParticle> > &, const int &);
+  void FillNtuple(NtupleContent &);
 
-    void SetInputs(const edm::Event &,const edm::EDGetTokenT<edm::View<reco::GenParticle> > & , const int & );
-    void FillNtuple(NtupleContent &);
-
-  private:  
-    edm::Handle<edm::View<reco::GenParticle> > gens;
-    TLorentzVector gmuon1,gmuon2;
-    int gcharge1,gcharge2;
-//    unsigned reco_idx1,reco_idx2;
-    bool success=true;
+private:
+  edm::Handle<edm::View<reco::GenParticle> > gens;
+  TLorentzVector gmuon1, gmuon2;
+  int gcharge1, gcharge2;
+  //    unsigned reco_idx1,reco_idx2;
+  bool success = true;
 };
 
 #endif
