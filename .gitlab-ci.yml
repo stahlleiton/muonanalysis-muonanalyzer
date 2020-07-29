@@ -40,7 +40,7 @@ build-master:
         - rm -rf $CMSSW_BASE/src/.git 
         - rm -rf $CMSSW_BASE/tmp
         - cd ../..
-        - tar czvf build.tar.gz $CMSSW_VERSION
+        - tar czvf $HERE_BASE/build.tar.gz $CMSSW_VERSION
     artifacts:
         when: on_success
         expire_in: 1 days
