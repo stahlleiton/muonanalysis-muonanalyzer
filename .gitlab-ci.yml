@@ -36,6 +36,17 @@ build-master:
         - mkdir -p MuonAnalysis/MuonAnalyzer
         - cp -a ${BASE_HERE} MuonAnalysis/MuonAnalyzer
         - scram b -j 5
+        - ls -d $CMSSW_BASE/src/.git  $CMSSW_BASE/tmp $CMSSW_BASE/src/MuonAnalysis/MuonAnalyzer/.git
+        - rm -rf $CMSSW_BASE/src/.git 
+        - rm -rf $CMSSW_BASE/tmp 
+        - rm -rf $CMSSW_BASE/src/MuonAnalysis/MuonAnalyzer/.git
+        - cd ../..
+        - tar czvf build.tar.gz $CMSSW_VERSION
+    artifacts:
+        when: on_success
+        expire_in: 1 days
+        paths: 
+            - build.tar.gz
 
 stages:
   - build
