@@ -33,11 +33,12 @@ build-master:
         - git config user.email "noreply@cern.ch"
         - git config user.name "Noreply"
         - mkdir -p MuonAnalysis/MuonAnalyzer
-        - cp -a $CI_PROJECT_DIR MuonAnalysis/MuonAnalyzer
+        - cp -a $CI_PROJECT_DIR/* MuonAnalysis/MuonAnalyzer/
         - scram b -j 5
-        - ls -d $CMSSW_BASE/src/.git  $CMSSW_BASE/tmp
+        - ls -d $CMSSW_BASE/src/.git  $CMSSW_BASE/tmp $CMSSW_BASE/src/MuonAnalysis/MuonAnalyzer/.git
         - rm -rf $CMSSW_BASE/src/.git 
         - rm -rf $CMSSW_BASE/tmp
+        - rm -rf $CMSSW_BASE/src/MuonAnalysis/MuonAnalyzer/.git
         - cd ../..
         - tar czvf $CI_PROJECT_DIR/build.tar.gz $CMSSW_VERSION
     artifacts:
