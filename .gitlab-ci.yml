@@ -1,0 +1,27 @@
+variables:
+  CMSSW_RELEASE: CMSSW_10_5_0
+  CMSSW_SCRAM_ARCH: slc7_amd64_gcc820
+
+image: gitlab-registry.cern.ch/ci-tools/ci-worker:cc7
+
+before_script:
+  - "yum install -y openssl"
+  - source /cvmfs/grid.cern.ch/etc/profile.d/setup-cvmfs-ui.sh
+  - source /cvmfs/cms.cern.ch/cmsset_default.sh
+
+build-master:
+    tags: [ cvmfs,docker ]
+    stage: build
+    only: [ /^master-.*$/ ]
+    except: [ pushes ]
+    script:
+        - ls
+        - export SCRAM_ARCH=${CMSSW_RELEASE_ARCH}
+        - scram p CMSSW ${CMSSW_RELEASE}
+        - cd ${CMSSW_RELEASE}/src
+        - eval $(scram runtime -sh)
+        - git cms-init
+        - scram b -j 5
+
+stages:
+  - build
