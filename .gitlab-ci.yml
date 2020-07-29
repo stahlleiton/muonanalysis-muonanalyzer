@@ -12,7 +12,7 @@ before_script:
 build-master:
     tags: [ cvmfs,docker ]
     stage: build
-    only: [ /^master-.*$/ ]
+    only: [ master ]
     except: [ pushes ]
     script:
         - ls
