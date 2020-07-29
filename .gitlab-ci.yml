@@ -16,11 +16,25 @@ build-master:
     except: [ pushes ]
     script:
         - ls
+        - pwd
+        - export BASE_HERE=${PWD}
+        - cd ..
         - export SCRAM_ARCH=${CMSSW_RELEASE_ARCH}
         - scram p CMSSW ${CMSSW_RELEASE}
         - cd ${CMSSW_RELEASE}/src
         - eval $(scram runtime -sh)
-        - git cms-init
+        - export OFFICIAL_CMSSW_REPO=https://github.com/cms-sw/cmssw.git
+        - export CMSSW_GIT_REFERENCE=/cvmfs/cms.cern.ch/cmssw.git.daily
+        - git clone --branch $CMSSW_VERSION --no-checkout --reference $CMSSW_GIT_REFERENCE --origin official-cmssw $OFFICIAL_CMSSW_REPO .
+        - git fetch official-cmssw  $CMSSW_VERSION
+        - git config core.sparsecheckout true
+        - echo -e '/.clang-format\n/.clang-tidy\n/.gitignore' > .git/info/sparse-checkout
+        - git checkout -b from-$CMSSW_VERSION $CMSSW_VERSION
+        - git read-tree -mu HEAD
+        - git config user.email "noreply@cern.ch"
+        - git config user.name "Noreply"
+        - mkdir -p MuonAnalysis/MuonAnalyzer
+        - cp -a ${BASE_HERE} MuonAnalysis/MuonAnalyzer
         - scram b -j 5
 
 stages:
