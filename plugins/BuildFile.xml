@@ -1,4 +1,5 @@
 <library name="MuonAnalyzers" file="*.cc">
+ <flags EDM_PLUGIN="1"/>
 </library>
  <use name="MuonAnalysis/MuonAnalyzer"/>
  <use name="FWCore/Framework"/>
@@ -20,4 +21,3 @@
  <use name="TrackingTools/TransientTrack"/>
  <use name="TrackingTools/Records"/>
  <use name="DataFormats/MuonReco" />
- <flags EDM_PLUGIN="1"/>
