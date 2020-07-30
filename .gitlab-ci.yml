@@ -19,7 +19,7 @@ build-master:
     except: [ pushes ]
     script:
         - cd ..
-        - ci_setup_cmssw.sh
+        - source ci_setup_cmssw.sh
         - mkdir -p MuonAnalysis/MuonAnalyzer
         - cp -a $CI_PROJECT_DIR/* MuonAnalysis/MuonAnalyzer/
         - scram b -j 5
@@ -35,7 +35,7 @@ test-code:
     stage: test-simple
     except: [ pushes ]
     script:
-        - ci_untar_cmssw.sh
+        - source ci_untar_cmssw.sh
         - ci_kinit.sh
         - scp ${CMS_SERVICE_USER}@lxplus:/eos/cms/store/group/phys_muon/MuonPOGIntegration/rootfiles/UL18/events_MINIAOD_SingleMuon_numEvent100.root .
         - cmsRun MuonAnalysis/MuonAnalyzer/test/run_muonAnalizer_cfg.py inputFiles=file:events_MINIAOD_SingleMuon_numEvent100.root globalTag=106X_dataRun2_v28 maxEvents=-1 isMC=0 isFullAOD=0 outputFile=output.root
