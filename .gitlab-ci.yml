@@ -9,6 +9,8 @@ before_script:
   - "yum install -y openssl"
   - source /cvmfs/grid.cern.ch/etc/profile.d/setup-cvmfs-ui.sh
   - source /cvmfs/cms.cern.ch/cmsset_default.sh
+  - git clone ssh://git@gitlab.cern.ch:7999/cms-muonPOG/muonpog-integration.git ~/muonpog-integration
+  - export PATH=${PATH}:~/muonpog-integration/scripts
 
 build-master:
     tags: [ cvmfs,docker ]
@@ -60,12 +62,7 @@ test-code:
         - CMSSW_VERSION_SPLIT=($(echo $CMSSW_VERSION | tr _ \ ))
         - export CMSSW_MAJOR=${CMSSW_VERSION_SPLIT[1]}
         - export CMSSW_MINOR=${CMSSW_VERSION_SPLIT[2]}
-        # https://gitlab.cern.ch/gitlabci-examples/kinit_example
-        - test -d ~/.ssh || mkdir -p ~/.ssh
-        - test -f ~/.ssh/known_hosts || touch ~/.ssh/known_hosts
-        - grep -q "^lxplus ssh-rsa"  ~/.ssh/known_hosts || echo "$SSH_SERVER_HOSTKEYS" >> ~/.ssh/known_hosts
-        - echo -e "Host *\n\tGSSAPIDelegateCredentials yes\n\tGSSAPITrustDNS yes\n\n" > ~/.ssh/config
-        - echo "${CMS_SERVICE_SECRET}" | kinit -f ${CMS_SERVICE_USER}@CERN.CH
+        - ci_kinit.sh
         - scp ${CMS_SERVICE_USER}@lxplus:/eos/cms/store/group/phys_muon/MuonPOGIntegration/rootfiles/UL18/events_MINIAOD_SingleMuon_numEvent100.root .
         - cmsRun MuonAnalysis/MuonAnalyzer/test/run_muonAnalizer_cfg.py inputFiles=file:events_MINIAOD_SingleMuon_numEvent100.root globalTag=106X_dataRun2_v28 maxEvents=-1 isMC=0 isFullAOD=0 outputFile=output.root
 
