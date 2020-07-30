@@ -50,6 +50,7 @@ build-master:
 test-code:
     tags: [ cvmfs ] 
     stage: test-simple
+    except: [ pushes ]
     script:
         - tar xzvf build.tar.gz
         - cd CMSSW_*/src
