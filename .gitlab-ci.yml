@@ -58,8 +58,11 @@ test-code:
         - CMSSW_VERSION_SPLIT=($(echo $CMSSW_VERSION | tr _ \ ))
         - export CMSSW_MAJOR=${CMSSW_VERSION_SPLIT[1]}
         - export CMSSW_MINOR=${CMSSW_VERSION_SPLIT[2]}
+        - test -d ~/.ssh || mkdir -p ~/.ssh
+        - test -f ~/.ssh/known_hosts || touch ~/.ssh/known_hosts
+        - grep -q "^cms-muon-pog01.cern.ch ssh-rsa"  ~/.ssh/known_hosts || echo "cms-muon-pog01.cern.ch ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAzTtuMdpDzR8B4gIyQVlPxlmbmQMHN56dB44uQj22mE2wqiAy89JCbsfx5XHZCU8HZqbVh6h7zGTHjfdi6mFk93iRU+ZksyHSnsnJxpJjRqlGKzmdJ8pPZpNNTSytUd1OdRavw63wC3CS2YB1JMUnlejbm4MzyRqypQHX61A6nKizNX0ig64XUH19fPyzD+45jp3l93SeTAfc6lsJ/68xz/JViExQdxFRSAou4gDFJqRQFohXB0VJBymnVP4Jhlx3dg739SyyTIAvyAiHSiqp516SC3LEsVKQS7MD4FjWP06sa/5FrnHe2arx6rPkUY6G9Rw0XxaUnIeCTippIAO7PQ==" >> ~/.ssh/known_hosts
         - echo "${CMS_SERVICE_SECRET}" | kinit -f ${CMS_SERVICE_USER}@CERN.CH
-        - scp ${CMS_SERVICE_USER}@lxplus.cern.ch:/eos/cms/store/group/phys_muon/MuonPOGIntegration/rootfiles/UL18/events_MINIAOD_SingleMuon_numEvent100.root .
+        - scp ${CMS_SERVICE_USER}@cms-muon-pog01.cern.ch:/eos/cms/store/group/phys_muon/MuonPOGIntegration/rootfiles/UL18/events_MINIAOD_SingleMuon_numEvent100.root .
         - cmsRun MuonAnalysis/MuonAnalyzer/test/run_muonAnalizer_cfg.py inputFiles=file:events_MINIAOD_SingleMuon_numEvent100.root globalTag=106X_dataRun2_v28 maxEvents=-1 isMC=0 isFullAOD=0 outputFile=output.root
 
 
