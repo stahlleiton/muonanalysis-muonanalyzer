@@ -18,31 +18,12 @@ build-master:
     only: [ master ]
     except: [ pushes ]
     script:
-        - ls
-        - pwd
         - cd ..
-        - export SCRAM_ARCH=${CMSSW_RELEASE_ARCH}
-        - scram p CMSSW ${CMSSW_RELEASE}
-        - cd ${CMSSW_RELEASE}/src
-        - eval $(scram runtime -sh)
-        - export OFFICIAL_CMSSW_REPO=https://github.com/cms-sw/cmssw.git
-        - export CMSSW_GIT_REFERENCE=/cvmfs/cms.cern.ch/cmssw.git.daily
-        - git clone --branch $CMSSW_VERSION --no-checkout --reference $CMSSW_GIT_REFERENCE --origin official-cmssw $OFFICIAL_CMSSW_REPO .
-        - git fetch official-cmssw  $CMSSW_VERSION
-        - git config core.sparsecheckout true
-        - echo -e '/.clang-format\n/.clang-tidy\n/.gitignore' > .git/info/sparse-checkout
-        - git checkout -b from-$CMSSW_VERSION $CMSSW_VERSION
-        - git read-tree -mu HEAD
-        - git config user.email "noreply@cern.ch"
-        - git config user.name "Noreply"
+        - ci_setup_cmssw.sh
         - mkdir -p MuonAnalysis/MuonAnalyzer
         - cp -a $CI_PROJECT_DIR/* MuonAnalysis/MuonAnalyzer/
         - scram b -j 5
-        - ls -d $CMSSW_BASE/src/.git  $CMSSW_BASE/tmp
-        - rm -rf $CMSSW_BASE/src/.git 
-        - rm -rf $CMSSW_BASE/tmp
-        - cd ../..
-        - tar czvf $CI_PROJECT_DIR/build.tar.gz $CMSSW_VERSION
+        - ci_tar_cmssw.sh
     artifacts:
         when: on_success
         expire_in: 1 days
@@ -54,14 +35,7 @@ test-code:
     stage: test-simple
     except: [ pushes ]
     script:
-        - tar xzvf build.tar.gz
-        - cd CMSSW_*/src
-        - scram b projectrename
-        - eval $(scram runtime -sh)
-        - export CMS_PATH=/cvmfs/cms-ib.cern.ch/week0
-        - CMSSW_VERSION_SPLIT=($(echo $CMSSW_VERSION | tr _ \ ))
-        - export CMSSW_MAJOR=${CMSSW_VERSION_SPLIT[1]}
-        - export CMSSW_MINOR=${CMSSW_VERSION_SPLIT[2]}
+        - ci_untar_cmssw.sh
         - ci_kinit.sh
         - scp ${CMS_SERVICE_USER}@lxplus:/eos/cms/store/group/phys_muon/MuonPOGIntegration/rootfiles/UL18/events_MINIAOD_SingleMuon_numEvent100.root .
         - cmsRun MuonAnalysis/MuonAnalyzer/test/run_muonAnalizer_cfg.py inputFiles=file:events_MINIAOD_SingleMuon_numEvent100.root globalTag=106X_dataRun2_v28 maxEvents=-1 isMC=0 isFullAOD=0 outputFile=output.root
