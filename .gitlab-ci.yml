@@ -9,7 +9,7 @@ before_script:
   - "yum install -y openssl"
   - source /cvmfs/grid.cern.ch/etc/profile.d/setup-cvmfs-ui.sh
   - source /cvmfs/cms.cern.ch/cmsset_default.sh
-  - git clone https://gitlab.cern.ch/cms-muonPOG/muonpog-integration.git ~/muonpog-integration
+  - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.cern.ch/cms-muonPOG/muonpog-integration.git ~/muonpog-integration
   - export PATH=${PATH}:~/muonpog-integration/scripts
 
 build-master:
