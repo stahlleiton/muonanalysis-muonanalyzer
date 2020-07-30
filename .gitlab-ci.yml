@@ -1,5 +1,5 @@
 variables:
-  CMSSW_RELEASE: CMSSW_10_5_0
+  CMSSW_RELEASE: CMSSW_10_6_4_patch1
   CMSSW_SCRAM_ARCH: slc7_amd64_gcc820
 
 image: gitlab-registry.cern.ch/ci-tools/ci-worker:cc7
@@ -58,7 +58,9 @@ test-code:
         - CMSSW_VERSION_SPLIT=($(echo $CMSSW_VERSION | tr _ \ ))
         - export CMSSW_MAJOR=${CMSSW_VERSION_SPLIT[1]}
         - export CMSSW_MINOR=${CMSSW_VERSION_SPLIT[2]}
-        - cmsRun MuonAnalysis/MuonAnalyzer/test/run_muonAnalizer_cfg.py
+        - echo "${CMS_SERVICE_SECRET}" | kinit -f ${CMS_SERVICE_USER}@CERN.CH
+        - scp ${CMS_SERVICE_USER}@lxplus.cern.ch:/eos/cms/store/group/phys_muon/MuonPOGIntegration/rootfiles/UL18/events_MINIAOD_SingleMuon_numEvent100.root .
+        - cmsRun MuonAnalysis/MuonAnalyzer/test/run_muonAnalizer_cfg.py inputFiles=file:events_MINIAOD_SingleMuon_numEvent100.root globalTag=106X_dataRun2_v28 maxEvents=-1 isMC=0 isFullAOD=0 outputFile=output.root
 
 
 stages:
