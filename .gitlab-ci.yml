@@ -35,7 +35,6 @@ build-pr:
     stage: build
     rules:
         - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-          when: manual
     script:
         - cd ..
         - source ci_setup_cmssw.sh
