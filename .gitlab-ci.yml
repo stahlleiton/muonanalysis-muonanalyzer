@@ -33,7 +33,9 @@ build-master:
 build-pr:
     tags: [ cvmfs,docker ]
     stage: build
-    only: [ merge_requests ]
+    rules:
+        - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+          when: manual
     script:
         - cd ..
         - source ci_setup_cmssw.sh
