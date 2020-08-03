@@ -12,11 +12,10 @@ before_script:
   - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.cern.ch/cms-muonPOG/muonpog-integration.git ~/muonpog-integration
   - export PATH=${PATH}:~/muonpog-integration/scripts
 
-build-master:
+
+build-code:
     tags: [ cvmfs,docker ]
     stage: build
-    only: [ master ]
-    except: [ pushes ]
     script:
         - cd ..
         - source ci_setup_cmssw.sh
@@ -33,7 +32,6 @@ build-master:
 test-code:
     tags: [ cvmfs ] 
     stage: test-simple
-    except: [ pushes ]
     script:
         - source ci_untar_cmssw.sh
         - ci_kinit.sh
