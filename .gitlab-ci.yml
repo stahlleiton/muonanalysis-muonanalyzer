@@ -13,9 +13,29 @@ before_script:
   - export PATH=${PATH}:~/muonpog-integration/scripts
 
 
-build-code:
+build-master:
     tags: [ cvmfs,docker ]
     stage: build
+    only:
+        - master
+    script:
+        - cd ..
+        - source ci_setup_cmssw.sh
+        - mkdir -p MuonAnalysis/MuonAnalyzer
+        - cp -a $CI_PROJECT_DIR/* MuonAnalysis/MuonAnalyzer/
+        - scram b -j 5
+        - ci_tar_cmssw.sh
+    artifacts:
+        when: on_success
+        expire_in: 1 days
+        paths: 
+            - build.tar.gz
+
+build-mr:
+    tags: [ cvmfs,docker ]
+    stage: build
+    only:
+        - merge_requests
     script:
         - cd ..
         - source ci_setup_cmssw.sh
@@ -32,6 +52,8 @@ build-code:
 test-code:
     tags: [ cvmfs ] 
     stage: test-simple
+    only:
+        - merge_requests
     script:
         - source ci_untar_cmssw.sh
         - ci_kinit.sh
