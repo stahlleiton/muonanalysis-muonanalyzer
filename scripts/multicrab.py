@@ -1,7 +1,9 @@
 #!/usr/bin/env python
+
 """
 This is a small script that does the equivalent of multicrab.
 """
+
 import os
 import sys
 from optparse import OptionParser
@@ -28,7 +30,7 @@ def getOptions():
     """
     Parse and return the arguments provided by the user.
     """
-    usage = ("Usage: %prog --crabCmd CMD [--workArea WAD --crabCmdOpts OPTS --sampleType TYPE --era ERA --subEra SUBERA]"
+    usage = ("Usage: %prog --crabCmd CMD [--workArea WAD --crabCmdOpts OPTS --sampleType TYPE --eraDB ERA_DB_FILE --subEra SUBERA]"
              "\nThe multicrab command executes 'crab CMD OPTS' for each project directory contained in WAD"
              "\nUse multicrab -h for help")
 
@@ -52,11 +54,11 @@ def getOptions():
                       help = "options for crab command CMD",
                       metavar = 'OPTS')
 
-    parser.add_option('-e', '--era',
-                      dest = 'era',
-                      default = 'Run2018',
-                      help = "Era to process: 'Run2018' (default), 'Run2017', 'Run2016'.",
-                      metavar = 'ERA')
+    parser.add_option('-e', '--eraDB',
+                      dest = 'eraDB',
+                      default = os.path.join(os.environ['CMSSW_BASE'], 'data/dataset_db_Z_EOYReReco.json'),
+                      help = "Era database file to process. Default: data/dataset_db_Z_EOYReReco.json",
+                      metavar = 'ERADB')
 
     parser.add_option('-s', '--subEra',
                       dest = 'subEra',
@@ -73,7 +75,7 @@ def getOptions():
     parser.add_option('-k', '--storageSite',
                       dest = 'storageSite',
                       default = 'CERN',
-                      help = "Storage site: 'CERN' (default, note CERNBOX requires auth.), 'FNAL'.",
+                      help = "Storage site: 'CERN' (default), 'CERNBOX' (note: requires permission), 'FNAL'.",
                       metavar = 'STORAGE')
 
     parser.add_option('-n', '--numThreads',
@@ -84,8 +86,8 @@ def getOptions():
 
     parser.add_option('-f', '--configFile',
                       dest = 'configFile',
-                      default = 'run_muonAnalyzer_cfg.py',
-                      help = "CMSSW cfg file to use (default 'run_muonAnalyzer_cfg.py'). File must be under /test folder.",
+                      default = os.path.join(os.environ['CMSSW_BASE'], 'src/MuonAnalysis/MuonAnalyzer/test/run_muonAnalyzer_cfg.py'),
+                      help = "CMSSW cfg file to use (default 'run_muonAnalyzer_cfg.py' in /test).",
                       metavar = 'CFG')
 
     (options, arguments) = parser.parse_args()
@@ -109,7 +111,7 @@ def main():
     doData = options.sampleType in ['all', 'data']
     doMC = options.sampleType in ['all', 'mc']
 
-    era = options.era
+    eraDB = options.eraDB
     subEra = options.subEra
     numThreads = options.numThreads
     storageSite = options.storageSite
@@ -134,8 +136,6 @@ def main():
         config.General.transferLogs = True
 
         config.JobType.pluginName = 'Analysis'
-        # Need to change into test dir since psetName appears to only accept relative paths
-        os.chdir(os.path.join(os.environ['CMSSW_BASE'], 'src/MuonAnalysis/MuonAnalyzer/test'))
         config.JobType.psetName = configFile
         config.JobType.numCores = numThreads
         #config.JobType.maxMemoryMB = 4000
@@ -146,35 +146,44 @@ def main():
         #config.Data.ignoreLocality = True
 
         if storageSite == 'FNAL':
+            # Requires write access to FNAL EOS space
             config.Site.storageSite = 'T3_US_FNALLPC'
-            config.Data.outLFNDirBase = '/store/user/%s/TnP_ntuples/%s/' % (getUsername(), era)
-            #config.Data.outLFNDirBase = '/store/group/lpcmetx/iDM/Muon_TnP/%s/' % era
+            config.Data.outLFNDirBase = '/store/user/%s/TnP_ntuples/%s/' % (getUsername(), eraDB.split('/')[-1].split('.')[0])
         elif storageSite == 'CERN':
-            # Note: CERNBOX write access from CRAB requires authorization
+            # Requires write access to Muon POG EOS space at CERN
+            config.Site.storageSite = 'T2_CH_CERN'
+            config.Data.outLFNDirBase = '/store/group/phys_muon/%s/TnP_ntuples/%s' % (getUsername(), eraDB.split('/')[-1].split('.')[0])
+        elif storageSite == 'CERNBOX':
+            # CERNBOX write access from CRAB requires special permission from CERN IT
             # See https://twiki.cern.ch/twiki/bin/view/CMSPublic/CRAB3FAQ#Can_I_send_CRAB_output_to_CERNBO
-            # and to request auth.: https://cern.service-now.com/service-portal?id=sc_cat_item&name=request-map-dn-to-gridmap&se=CERNBox-Service
+            # and to ask permission: https://cern.service-now.com/service-portal?id=sc_cat_item&name=request-map-dn-to-gridmap&se=CERNBox-Service
             config.Site.storageSite = 'T2_CH_CERNBOX'
-            config.Data.outLFNDirBase = '/store/user/%s/TnP_ntuples/%s/' % (getUsername(), era)
+            config.Data.outLFNDirBase = '/store/user/%s/TnP_ntuples/%s/' % (getUsername(), eraDB.split('/')[-1].split('.')[0])
 
         #--------------------------------------------------------
 
-        with open(os.path.join(os.environ['CMSSW_BASE'], 'src/MuonAnalysis/MuonAnalyzer/data/dataset_db.json'), 'r') as db:
-            data = json.load(db)
+        with open(eraDB, 'r') as db_file:
+            db = json.load(db_file)
+
+            era = db['era']
+            resonance = db['resonance']
+            datasets = db['datasets']
 
             samples = {}
             try:
                 if subEra == 'all':
-                    samples = data[era]
+                    samples = datasets
                 else:
-                    samples = dict({subEra: data[era][subEra]})
+                    samples = dict({subEra: datasets[subEra]})
             except:
                 print "Error! Requested era+sub-era is likely not valid. Please check argument."
                 sys.exit()
 
-        for sub_era, input_dataset in samples.items():
+        for curr_subEra, configs in samples.items():
             
-            isData = 'Run' in sub_era
-            isRun2018D = '2018D' in sub_era
+            isData = 'Run' in curr_subEra
+            globalTag = configs['globalTag'] if 'globalTag' in configs else ''
+            input_dataset = configs['dataset']
 
             if isData and not doData: continue
             if not isData and not doMC: continue
@@ -189,11 +198,11 @@ def main():
                 elif '2016' in era:
                     config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions16/13TeV/ReReco/Final/Cert_271036-284044_13TeV_ReReco_07Aug2017_Collisions16_JSON.txt'
 
-            config.JobType.pyCfgParams = ['isFullAOD={}'.format(True), 'isMC={}'.format(not isData), 'isRun2018D={}'.format(isRun2018D), 'numThreads={}'.format(numThreads), 'era={}'.format(era)]
+            config.JobType.pyCfgParams = ['isFullAOD={}'.format(True), 'isMC={}'.format(not isData), 'globalTag={}'.format(globalTag), 'numThreads={}'.format(numThreads)]
 
             config.Data.inputDataset = input_dataset
             config.JobType.allowUndistributedCMSSW = True
-            config.General.requestName = 'muonAnalyzer_' + era + '_' + sub_era
+            config.General.requestName = 'muonAnalyzer_' + resonance + '_' + era + '_' + curr_subEra
             #config.Data.outputDatasetTag = sample
 
             # If we need to pull input files from a list file instead of CRAB:

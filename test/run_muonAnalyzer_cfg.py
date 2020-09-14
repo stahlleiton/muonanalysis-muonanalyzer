@@ -1,6 +1,6 @@
 '''Author: g. karathanasis. georgios.karathanasis@cern.ch
 cfg to run tag and probe ntuple for muon POG. It runs both on AOD and miniAOD
-Modified by Andre Frankenthal (as2872@cornell.edu) -- September 2020
+Modified by Andre Frankenthal (a.franken@cern.ch) -- September 2020
 usage: cmsRun run_muonAnalyzer_cfg.py option1=value1 option2=value2
 '''
 
@@ -24,19 +24,7 @@ options.register('isMC', False,
     "Set to True for MC"
 )
 
-options.register('era', 'Run2018',
-    VarParsing.multiplicity.singleton,
-    VarParsing.varType.string,
-    "Era (Run2018/Run2017/Run2016)"
-)
-
-options.register('isRun2018D', False,
-    VarParsing.multiplicity.singleton,
-    VarParsing.varType.bool,
-    "Is Run2018D (different global tag)"
-)
-
-options.register('globalTag', 'NOTSET',
+options.register('globalTag', '',
     VarParsing.multiplicity.singleton,
     VarParsing.varType.string,
     "Set global tag"
@@ -56,19 +44,8 @@ options.register('numThreads', 1,
 
 options.parseArguments()
 
-if '2018' in options.era:
-    if options.isRun2018D:
-        globaltag = '102X_dataRun2_Prompt_v15'
-    else:
-        globaltag = '102X_dataRun2_v11' if not options.isMC else '102X_upgrade2018_realistic_v15'
-elif '2017' in options.era:
-    globaltag = '94X_dataRun2_v11' if not options.isMC else '94X_mc2017_realistic_v17'
-elif '2016' in options.era:
-    globaltag = '80X_dataRun2_2016SeptRepro_v7' if not options.isMC else '80X_mcRun2_asymptotic_2016_TrancheIV_v8'
-
-if options._beenSet['globalTag']:
+if options._beenSet['globalTag'] and options.globalTag != '':
     globaltag = options.globalTag
-
 
 if options.isFullAOD:
     if options.isMC and len(options.inputFiles)==0:
