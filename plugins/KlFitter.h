@@ -9,15 +9,15 @@
 #define KLFITTER_H
 
 #include "CommonTools/Statistics/interface/ChiSquaredProbability.h"
-#include "TrackingTools/Records/interface/TransientTrackRecord.h"
 #include "DataFormats/TrackReco/interface/Track.h"
-#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
-#include "RecoVertex/KalmanVertexFit/interface/KalmanVertexFitter.h"
 #include "NtupleContent.h"
+#include "RecoVertex/KalmanVertexFit/interface/KalmanVertexFitter.h"
+#include "TrackingTools/Records/interface/TransientTrackRecord.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
 #include "helper.h"
 
 class KlFitter {
-public:
+ public:
   KlFitter(std::vector<reco::TransientTrack> &);
   ~KlFitter();
 
@@ -25,7 +25,7 @@ public:
   bool status() { return status_; }
   float prob() { return prob_; }
 
-private:
+ private:
   TransientVertex dimuvtx;
   std::vector<reco::TransientTrack> refited;
   bool status_ = true;

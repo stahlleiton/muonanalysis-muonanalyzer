@@ -13,6 +13,7 @@
  <use name="DataFormats/Luminosity"/>
  <use name="DataFormats/TrackReco"/>
  <use name="RecoVertex/KalmanVertexFit"/>
+ <use name="SimDataFormats/PileupSummaryInfo"/>
  <use name="SimTracker/TrackAssociation"/>
  <use name="TrackingTools/IPTools"/>
  <use name="MagneticField/Engine"/>

@@ -12,10 +12,16 @@ if len(Path)>10:
   exit()
 
 muon = cms.EDAnalyzer('MuonFullAODAnalyzer',
+        isMC=cms.bool(False),
+            pileupInfo=cms.InputTag('addPileupInfo'),
+            Rho=cms.InputTag('fixedGridRhoFastjetAll'),
            beamSpot=cms.InputTag('offlineBeamSpot'),
            vertices=cms.InputTag("offlinePrimaryVertices"),
            muons=cms.InputTag("muons"),
            tracks=cms.InputTag("generalTracks"),
+           dSAmuons=cms.InputTag("displacedStandAloneMuons"),
+           dGlmuons=cms.InputTag("displacedGlobalMuons"),
+           staCosmic=cms.InputTag("cosmicMuons"),
            triggerResults=cms.InputTag("TriggerResults::HLT"),
            triggerObjects=cms.InputTag('hltTriggerSummaryAOD'),
            triggerPaths=cms.vstring(Path),
@@ -25,18 +31,19 @@ muon = cms.EDAnalyzer('MuonFullAODAnalyzer',
            ProbeFilters=cms.vstring(Filter),
            trgDRwindow= cms.double(0.05), # dr winwow hlt mu/offline
            tagQuality = cms.uint32(0),
-           tagSelection = cms.string("pt()>0"),
-           probeHPyrity = cms.bool(True),
-           probeSelection = cms.string("pt()>0"),
-           pairMassMin = cms.double(2.7),
-           pairMassMax = cms.double(3.3),
-           pairDz = cms.double(10.1),
+           tagSelection = cms.string("pt()>10"),
+           probeHPurity = cms.bool(False),
+           probeSelection = cms.string("pt()>5"),
+           pairMassMin = cms.double(60.0),
+           pairMassMax = cms.double(140.0),
+           pairDz = cms.double(-1),
            RequireVtxCreation = cms.bool(False),
            minSVtxProb = cms.double(0.01),
            maxDzProbeTrkMuon = cms.double(0.01), # max Dz(mu1,mu2)
            maxRelPtProbeTrkMuon = cms.double(1.0),# max [pt(mu)-pt(trk)]/pt(trk) for probe/offline
            maxDRProbeTrkMuon =  cms.double(0.03), # max DR for probe/offline
-           momPdgId= cms.uint32(443),
+           maxDRProbeTrkDSA =  cms.double(0.4), # max DR for general track and dSA
+           momPdgId= cms.uint32(23),
            genRecoDrMatch = cms.double(0.03),
            debug = cms.int32(0)
            

@@ -7,13 +7,13 @@
 
 #ifndef NTUPLECONTENT_H
 #define NTUPLECONTENT_H
-#include "TTree.h"
-#include <vector>
 #include <string>
+#include <vector>
 #include "TString.h"
+#include "TTree.h"
 
 class NtupleContent {
-public:
+ public:
   NtupleContent();
   virtual ~NtupleContent();
   void SetTree(TTree *t1);
@@ -21,7 +21,7 @@ public:
   void CreateExtraTrgBranches(const std::vector<std::string> &);
   void ClearBranches();
 
-  // standard stuff
+  // Standard stuff
   int run;
   int event;
   int ls;
@@ -34,13 +34,19 @@ public:
   float pv_x;
   float pv_y;
   float pv_z;
+  int nvertices;
 
-  //number of muons
+  // Pileup
+  float trueNumInteractions;
+  int puNumInteractions;
+  double Rho;
+
+  // Number of muons
   int nmuons;
   int ntag;
   int iprobe;
 
-  //triggers
+  // Triggers
   bool trigger[10];
   std::vector<float> trg_pt;
   std::vector<float> trg_eta;
@@ -49,7 +55,7 @@ public:
   std::vector<float> prb_pt;
   std::vector<float> prb_eta;
   std::vector<float> prb_phi;
-  //triggers - probe
+  // Triggers - probe
   bool probe_trg[10] = {false};
 
   float genmu1_pt;
@@ -59,7 +65,7 @@ public:
   float genmu2_eta;
   float genmu2_phi;
 
-  // tag properties
+  // Tag properties
   float tag_pt;
   float tag_eta;
   float tag_phi;
@@ -71,7 +77,7 @@ public:
   float tag_relIso04;
   bool tag_isMatchedGen;
 
-  // probe properties
+  // Probe properties
   float probe_pt;
   float probe_eta;
   float probe_phi;
@@ -82,7 +88,12 @@ public:
   bool probe_isHighPt;
   bool probe_isMuMatched;
   bool probe_isPF;
+  bool probe_isSA;
+  bool probe_isTracker;
   bool probe_isGlobal;
+  bool probe_isdSA;
+  bool probe_isdGlobal;
+  bool probe_isCosmic;
   bool probe_isGood;
   bool probe_isHighPurity;
   float probe_relIso04;
@@ -95,10 +106,27 @@ public:
   float probe_segmentCompatibility;
   float probe_trackerLayers;
   float probe_pixelLayers;
+  float probe_muonStations;
+  float probe_muonHits;
+  float probe_DTHits;
+  float probe_CSCHits;
+  float probe_pterr;
   float probe_dxy;
   float probe_dz;
 
-  // pair properties
+  float probe_dsa_pt;
+  float probe_dsa_eta;
+  float probe_dsa_phi;
+  float probe_dsa_trkChi2;
+  float probe_dsa_muonStations;
+  float probe_dsa_muonHits;
+  float probe_dsa_DTHits;
+  float probe_dsa_CSCHits;
+  float probe_dsa_pterr;
+  float probe_dsa_dxy;
+  float probe_dsa_dz;
+
+  // Pair properties
   float pair_pt;
   float pair_mass;
   float pair_eta;
@@ -108,7 +136,7 @@ public:
   float pair_dz;
   float pair_first_pair;
 
-private:
+ private:
   TTree *t1;
 };
 #endif

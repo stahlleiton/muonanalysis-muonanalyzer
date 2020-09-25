@@ -90,6 +90,12 @@ def getOptions():
                       help = "CMSSW cfg file to use (default 'run_muonAnalyzer_cfg.py' in /test).",
                       metavar = 'CFG')
 
+    parser.add_option('-x', '--customSuffix',
+                      dest = 'customSuffix',
+                      default = '',
+                      help = "Custom CRAB name suffix to output dataset tag",
+                      metavar = 'SUFFIX')
+
     (options, arguments) = parser.parse_args()
 
     if arguments:
@@ -113,6 +119,7 @@ def main():
 
     eraDB = options.eraDB
     subEra = options.subEra
+    customSuffix = options.customSuffix
     numThreads = options.numThreads
     storageSite = options.storageSite
 
@@ -141,7 +148,6 @@ def main():
         #config.JobType.maxMemoryMB = 4000
 
         config.Data.splitting = 'Automatic'
-
         config.Data.publication = False
         #config.Data.ignoreLocality = True
 
@@ -160,6 +166,8 @@ def main():
             config.Site.storageSite = 'T2_CH_CERNBOX'
             config.Data.outLFNDirBase = '/store/user/%s/TnP_ntuples/%s/' % (getUsername(), eraDB.split('/')[-1].split('.')[0])
 
+        #config.Site.ignoreGlobalBlacklist = True
+
         #--------------------------------------------------------
 
         with open(eraDB, 'r') as db_file:
@@ -176,7 +184,7 @@ def main():
                 else:
                     samples = dict({subEra: datasets[subEra]})
             except:
-                print "Error! Requested era+sub-era is likely not valid. Please check argument."
+                print "Error!! Requested era+sub-era is likely not valid. Please check argument."
                 sys.exit()
 
         for curr_subEra, configs in samples.items():
@@ -198,12 +206,21 @@ def main():
                 elif '2016' in era:
                     config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions16/13TeV/ReReco/Final/Cert_271036-284044_13TeV_ReReco_07Aug2017_Collisions16_JSON.txt'
 
-            config.JobType.pyCfgParams = ['isFullAOD={}'.format(True), 'isMC={}'.format(not isData), 'globalTag={}'.format(globalTag), 'numThreads={}'.format(numThreads)]
+            config.JobType.pyCfgParams = [
+                    'resonance={}'.format(resonance),
+                    'isFullAOD={}'.format(True),
+                    'isMC={}'.format(not isData),
+                    'globalTag={}'.format(globalTag),
+                    'numThreads={}'.format(numThreads)
+                    ]
 
             config.Data.inputDataset = input_dataset
             config.JobType.allowUndistributedCMSSW = True
-            config.General.requestName = 'muonAnalyzer_' + resonance + '_' + era + '_' + curr_subEra
-            #config.Data.outputDatasetTag = sample
+            if customSuffix != '':
+                config.General.requestName = 'muonAnalyzer_' + resonance + '_' + era + '_' + curr_subEra + '_' + customSuffix
+            else:
+                config.General.requestName = 'muonAnalyzer_' + resonance + '_' + era + '_' + curr_subEra
+            #config.Data.outputDatasetTag = sample (default CRAB dataset tag is 'crab_' + requestName)
 
             # If we need to pull input files from a list file instead of CRAB:
             # config.Data.userInputFiles = open(basedir + sample + '.list').readlines()
