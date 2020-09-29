@@ -119,7 +119,7 @@ process.options = cms.untracked.PSet(
     numberOfThreads = cms.untracked.uint32(options.numThreads)
 )
 
-from MuonAnalysis.MuonAnalyzer.muonAnalysis_cff import *
+from MuonAnalysis.MuonAnalyzer.tools.ntuple_tools import *
 #process.load("MuonAnalysis.MuonAnalyzer.muonAnalysis_cff")
 if options.isFullAOD:
     if options.resonance == 'Z':
