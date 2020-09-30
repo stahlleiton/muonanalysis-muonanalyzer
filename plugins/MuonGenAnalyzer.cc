@@ -4,17 +4,16 @@ MuonGenAnalyzer::MuonGenAnalyzer(){};
 
 MuonGenAnalyzer::~MuonGenAnalyzer(){};
 
-void MuonGenAnalyzer::SetInputs(const edm::Event& iEvent,
-                                const edm::EDGetTokenT<edm::View<reco::GenParticle> >& gens_,
-                                const int& momPdg_) {
+void MuonGenAnalyzer::SetInputs(
+    const edm::Event& iEvent,
+    const edm::EDGetTokenT<edm::View<reco::GenParticle>>& gens_,
+    const int& momPdg_) {
   iEvent.getByToken(gens_, gens);
   std::vector<TLorentzVector> gmuons;
   std::vector<int> gcharge;
   for (const auto& gen : *gens) {
-    if (fabs(gen.pdgId()) != 13)
-      continue;
-    if (fabs(gen.mother()->pdgId()) != momPdg_)
-      continue;
+    if (fabs(gen.pdgId()) != 13) continue;
+    if (fabs(gen.mother()->pdgId()) != momPdg_) continue;
     TLorentzVector temp;
     temp.SetPtEtaPhiM(gen.pt(), gen.eta(), gen.phi(), MU_MASS);
     gmuons.push_back(temp);
@@ -33,7 +32,9 @@ void MuonGenAnalyzer::SetInputs(const edm::Event& iEvent,
       gcharge2 = gcharge[0];
     }
   } else {
-    std::cout << "Warning the decay " << momPdg_ << " 2 muons not found. Gen branches will remain empty" << std::endl;
+    std::cout << "Warning the decay " << momPdg_
+              << " 2 muons not found. Gen branches will remain empty"
+              << std::endl;
   }
 }
 
