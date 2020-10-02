@@ -92,8 +92,8 @@ class MuonFullAODAnalyzer : public edm::one::EDAnalyzer<> {
  private:
   void beginJob() override;
   bool HLTaccept(const edm::Event&, NtupleContent&, std::vector<std::string>&);
-  void HLTmuon(const edm::Event&, std::vector<float>&, std::vector<float>&,
-               std::vector<float>&, std::vector<std::string>&, const int&);
+  typedef std::map<std::string, std::vector<std::tuple<float, float, float> > > TRGInfo;
+  void HLTmuon(const edm::Event&, TRGInfo&, std::vector<std::string>&, const int&);
   void analyze(const edm::Event&, const edm::EventSetup&) override;
   void endJob() override;
 
@@ -239,9 +239,7 @@ bool MuonFullAODAnalyzer::HLTaccept(const edm::Event& iEvent, NtupleContent& nt,
 }
 
 void MuonFullAODAnalyzer::HLTmuon(const edm::Event& iEvent,
-                                  std::vector<float>& trg_pt,
-                                  std::vector<float>& trg_eta,
-                                  std::vector<float>& trg_phi,
+                                  TRGInfo& trgInfo,
                                   std::vector<std::string>& HLTFilters,
                                   const int& debug_) {
   edm::Handle<trigger::TriggerEvent> triggerObjects;
@@ -256,9 +254,7 @@ void MuonFullAODAnalyzer::HLTmuon(const edm::Event& iEvent,
       for (size_t j = 0; j < keys.size(); j++) {
         trigger::TriggerObject foundObject = (allTriggerObjects)[keys[j]];
         if (fabs(foundObject.id()) != 13) continue;
-        trg_pt.push_back(foundObject.pt());
-        trg_eta.push_back(foundObject.eta());
-        trg_phi.push_back(foundObject.phi());
+        trgInfo[ifilter].emplace_back(std::make_tuple(foundObject.pt(), foundObject.eta(), foundObject.phi()));
         if (debug_ > 0)
           std::cout << "Trg muon " << foundObject.pt() << std::endl;
       }
@@ -346,8 +342,10 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
 
   // check if path fired, if so save hlt muons
   if (!HLTaccept(iEvent, nt, HLTPaths_)) return;
-  HLTmuon(iEvent, nt.trg_pt, nt.trg_eta, nt.trg_phi, HLTFilters_, debug_);
-  HLTmuon(iEvent, nt.prb_pt, nt.prb_eta, nt.prb_phi, ProbeFilters_, debug_);
+  TRGInfo trgInfo;
+  auto filters = HLTFilters_;
+  filters.insert(filters.begin(), ProbeFilters_.begin(), ProbeFilters_.end());
+  HLTmuon(iEvent, trgInfo, filters, debug_);
 
   // gen information
   MuonGenAnalyzer genmu;
@@ -376,26 +374,47 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
       matched_track_idx.push_back(reco_match_genmu2.second);
   }
 
-  // match hlt with offline muon
-  std::vector<unsigned> trg_idx;
-  for (unsigned itrg = 0; itrg < nt.trg_pt.size(); ++itrg) {
-    float minDR = 1000;
-    unsigned idx = 0;
-    for (auto& mu : *muons) {
-      if (minDR <
-          deltaR(nt.trg_eta[itrg], nt.trg_phi[itrg], mu.eta(), mu.phi()))
-        continue;
-      minDR = deltaR(nt.trg_eta[itrg], nt.trg_phi[itrg], mu.eta(), mu.phi());
-      idx = &mu - &muons->at(0);
+  // match hlt with offline muon for tags
+  std::vector<std::vector<size_t> > trg_tag_idx(HLTFilters_.size());
+  for (size_t ipath=0; ipath<HLTFilters_.size(); ipath++) {
+    for (const auto& obj : trgInfo[HLTFilters_[ipath]]) {
+      float minDR = 1000;
+      unsigned idx = 0;
+      for (auto& mu : *muons) {
+        const auto& dR = deltaR(std::get<1>(obj), std::get<2>(obj), mu.eta(), mu.phi());
+        if (minDR < dR) continue;
+        minDR = dR;
+        idx = &mu - &muons->at(0);
+      }
+      if (debug_ > 0)
+        std::cout << "Trg " << ipath << ", min DR " << minDR << std::endl;
+      if (minDR < trgDRwindow_) trg_tag_idx[ipath].push_back(idx);
+      if (minDR < trgDRwindow_ && debug_ > 0)
+        std::cout << "Matched!" << std::endl;
     }
-    if (debug_ > 0)
-      std::cout << "Trg " << itrg << ", min DR " << minDR << std::endl;
-    if (minDR < trgDRwindow_) trg_idx.push_back(idx);
-    if (minDR < trgDRwindow_ && debug_ > 0)
-      std::cout << "Matched!" << std::endl;
   }
   nt.nmuons = muons->size();
-  nt.ntag = trg_idx.size();
+  nt.ntag = trg_tag_idx.size();
+
+  // match hlt with offline muon for probes
+  std::vector<std::vector<size_t> > trg_prb_idx(ProbeFilters_.size());
+  for (size_t ipath=0; ipath<ProbeFilters_.size(); ipath++) {
+    for (const auto& obj : trgInfo[ProbeFilters_[ipath]]) {
+      float minDR = 1000;
+      unsigned idx = 0;
+      for (auto& trk : *tracks) {
+        const auto& dR = deltaR(std::get<1>(obj), std::get<2>(obj), trk.eta(), trk.phi());
+        if (minDR < dR) continue;
+        minDR = dR;
+        idx = &trk - &tracks->at(0);
+      }
+      if (debug_ > 0)
+        std::cout << "Trg " << ipath << ", min DR " << minDR << std::endl;
+      if (minDR < trgDRwindow_) trg_tag_idx[ipath].push_back(idx);
+      if (minDR < trgDRwindow_ && debug_ > 0)
+        std::cout << "Track matched!" << std::endl;
+    }
+  }
 
   // select tags
   RecoTrkAndTransientTrkCollection tag_trkttrk;
@@ -403,9 +422,14 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
   for (const reco::Muon& mu : *muons) {
     if (!mu.passed(pow(2, tagQual_))) continue;
     if (!tagSelection_(mu)) continue;
-    if (std::find(trg_idx.begin(), trg_idx.end(), &mu - &muons->at(0)) ==
-        trg_idx.end())
-      continue;
+    bool isTrgMatch = false;
+    for (const auto& trg : trg_tag_idx) {
+      if (std::find(trg.begin(), trg.end(), &mu - &muons->at(0)) != trg.end()) {
+        isTrgMatch = true;
+        break;
+      }
+    }
+    if (!isTrgMatch) continue;
     tag_trkttrk.emplace_back(
         std::make_pair(mu, reco::TransientTrack(*mu.bestTrack(), &(*bField))));
     if (std::find(matched_muon_idx.begin(), matched_muon_idx.end(),
@@ -557,6 +581,12 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
           std::find(trk_cosmic_map.first.begin(), trk_cosmic_map.first.end(),
                     &probe - &tracks->at(0));
 
+      // probe trigger matching
+      for (size_t ipath=0; ipath<trg_prb_idx.size(); ipath++) {
+        const auto& trg = trg_prb_idx[ipath];
+        nt.probe_trg[ipath] = (std::find(trg.begin(), trg.end(), &probe - &tracks->at(0)) != trg.end());
+      }
+
       if (it == trk_muon_map.first.end()) {
         reco::Muon fakeMuon;
         fakeMuon.setP4(mu2);
@@ -644,7 +674,7 @@ void MuonFullAODAnalyzer::beginJob() {
   t1 = fs->make<TTree>("Events", "Events");
   nt.SetTree(t1);
   nt.CreateBranches(HLTPaths_);
-  // nt.CreateExtraTrgBranches(ProbePaths_);
+  nt.CreateExtraTrgBranches(ProbePaths_);
 }
 
 // ------------ method called once each job just after ending the event loop
