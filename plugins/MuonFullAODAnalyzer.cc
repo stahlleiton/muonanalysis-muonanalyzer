@@ -410,7 +410,7 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
       }
       if (debug_ > 0)
         std::cout << "Trg " << ipath << ", min DR " << minDR << std::endl;
-      if (minDR < trgDRwindow_) trg_tag_idx[ipath].push_back(idx);
+      if (minDR < trgDRwindow_) trg_prb_idx[ipath].push_back(idx);
       if (minDR < trgDRwindow_ && debug_ > 0)
         std::cout << "Track matched!" << std::endl;
     }
