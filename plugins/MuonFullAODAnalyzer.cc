@@ -57,6 +57,7 @@
 #include "RecoVertex/KalmanVertexFit/interface/KalmanVertexFitter.h"
 #include "TLorentzVector.h"
 #include "TTree.h"
+#include "TRegexp.h"
 #include "TrackingTools/PatternTools/interface/ClosestApproachInRPhi.h"
 #include "TrackingTools/PatternTools/interface/TwoTrackMinimumDistance.h"
 #include "TrackingTools/Records/interface/TransientTrackRecord.h"
@@ -92,7 +93,7 @@ class MuonFullAODAnalyzer : public edm::one::EDAnalyzer<> {
  private:
   void beginJob() override;
   bool HLTaccept(const edm::Event&, NtupleContent&, std::vector<std::string>&);
-  typedef std::map<std::string, std::vector<std::tuple<float, float, float> > > TRGInfo;
+  typedef std::map<std::string, std::vector<std::tuple<float, float, float, std::set<size_t>, std::set<size_t> > > > TRGInfo;
   void HLTmuon(const edm::Event&, TRGInfo&, std::vector<std::string>&, const int&);
   void analyze(const edm::Event&, const edm::EventSetup&) override;
   void endJob() override;
@@ -228,9 +229,10 @@ bool MuonFullAODAnalyzer::HLTaccept(const edm::Event& iEvent, NtupleContent& nt,
     for (unsigned int itrg = 0; itrg < trigResults->size(); ++itrg) {
       TString TrigPath = trigName.triggerName(itrg);
       if (!trigResults->accept(itrg)) continue;
-      if (!TrigPath.Contains(path)) continue;
+      if (!TrigPath.Contains(TRegexp(TString(path)))) continue;
       EvtFire = true;
       TrgFire = true;
+      break;
     }
     nt.trigger[ipath] = TrgFire;
     ipath++;
@@ -244,20 +246,31 @@ void MuonFullAODAnalyzer::HLTmuon(const edm::Event& iEvent,
                                   const int& debug_) {
   edm::Handle<trigger::TriggerEvent> triggerObjects;
   iEvent.getByToken(trigobjectsToken_, triggerObjects);
-  trigger::TriggerObjectCollection allTriggerObjects =
-      triggerObjects->getObjects();
-  for (auto ifilter : HLTFilters) {
-    size_t filterIndex =
-        (*triggerObjects).filterIndex(edm::InputTag(ifilter, "", "HLT"));
-    if (filterIndex < (*triggerObjects).sizeFilters()) {
-      const trigger::Keys& keys = (*triggerObjects).filterKeys(filterIndex);
-      for (size_t j = 0; j < keys.size(); j++) {
-        trigger::TriggerObject foundObject = (allTriggerObjects)[keys[j]];
-        if (fabs(foundObject.id()) != 13) continue;
-        trgInfo[ifilter].emplace_back(std::make_tuple(foundObject.pt(), foundObject.eta(), foundObject.phi()));
-        if (debug_ > 0)
-          std::cout << "Trg muon " << foundObject.pt() << std::endl;
-      }
+  trigger::TriggerObjectCollection allTriggerObjects = triggerObjects->getObjects();
+  // get filter information per trigger object
+  std::map<size_t, std::set<size_t> > tagFilters, probeFilters;
+  for (size_t filterIndex=0; filterIndex < triggerObjects->sizeFilters(); filterIndex++) {
+    TString TrigFilter = triggerObjects->filterLabel(filterIndex);
+    const trigger::Keys& keys = (*triggerObjects).filterKeys(filterIndex);
+    for (size_t ipath=0; ipath<HLTFilters.size(); ipath++) {
+      if (!TrigFilter.Contains(TRegexp(TString(HLTFilters[ipath])))) continue;
+      for (size_t j = 0; j < keys.size(); j++) tagFilters[keys[j]].insert(ipath);
+    }
+    for (size_t ipath=0; ipath<ProbeFilters_.size(); ipath++) {
+      if (!TrigFilter.Contains(TRegexp(TString(ProbeFilters_[ipath])))) continue;
+      for (size_t j = 0; j < keys.size(); j++) probeFilters[keys[j]].insert(ipath);
+    }
+  }
+  if (tagFilters.empty() && probeFilters.empty()) return;
+  // add trigger objects per collection
+  const auto& cK = triggerObjects->collectionKeys();
+  for (size_t i=1; i<cK.size(); i++) {
+    const auto& coll = triggerObjects->collectionTag(i).encode();
+    for (size_t j=cK[i-1]; j<cK[i]; j++) {
+      trigger::TriggerObject foundObject = (allTriggerObjects)[j];
+      if (fabs(foundObject.id()) != 13) continue;
+      trgInfo[coll].emplace_back(std::make_tuple(foundObject.pt(), foundObject.eta(), foundObject.phi(), tagFilters[j], probeFilters[j]));
+      if (debug_ > 0) std::cout << "Trg muon " << foundObject.pt() << std::endl;
     }
   }
 }
@@ -376,21 +389,24 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
 
   // match hlt with offline muon for tags
   std::vector<std::vector<size_t> > trg_tag_idx(HLTFilters_.size());
-  for (size_t ipath=0; ipath<HLTFilters_.size(); ipath++) {
-    for (const auto& obj : trgInfo[HLTFilters_[ipath]]) {
+  for (size_t imu=0; imu<muons->size(); imu++) {
+    const auto& mu = muons->at(imu);
+    for (const auto& coll : trgInfo) {
       float minDR = 1000;
-      unsigned idx = 0;
-      for (auto& mu : *muons) {
+      size_t idx = 0;
+      for (size_t iobj=0; iobj<coll.second.size(); iobj++) {
+        const auto& obj = coll.second[iobj];
         const auto& dR = deltaR(std::get<1>(obj), std::get<2>(obj), mu.eta(), mu.phi());
         if (minDR < dR) continue;
         minDR = dR;
-        idx = &mu - &muons->at(0);
+        idx = iobj;
       }
-      if (debug_ > 0)
-        std::cout << "Trg " << ipath << ", min DR " << minDR << std::endl;
-      if (minDR < trgDRwindow_) trg_tag_idx[ipath].push_back(idx);
-      if (minDR < trgDRwindow_ && debug_ > 0)
-        std::cout << "Matched!" << std::endl;
+      if (minDR >= trgDRwindow_) continue;
+      const auto& obj = coll.second[idx];
+      for (size_t ipath=0; ipath<HLTFilters_.size(); ipath++) {
+        if (std::get<3>(obj).find(ipath)==std::get<3>(obj).end()) continue;
+        trg_tag_idx[ipath].push_back(imu);
+      }
     }
   }
   nt.nmuons = muons->size();
@@ -398,21 +414,24 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
 
   // match hlt with offline muon for probes
   std::vector<std::vector<size_t> > trg_prb_idx(ProbeFilters_.size());
-  for (size_t ipath=0; ipath<ProbeFilters_.size(); ipath++) {
-    for (const auto& obj : trgInfo[ProbeFilters_[ipath]]) {
+  for (size_t imu=0; imu<tracks->size(); imu++) {
+    const auto& mu = tracks->at(imu);
+    for (const auto& coll : trgInfo) {
       float minDR = 1000;
-      unsigned idx = 0;
-      for (auto& trk : *tracks) {
-        const auto& dR = deltaR(std::get<1>(obj), std::get<2>(obj), trk.eta(), trk.phi());
+      size_t idx = 0;
+      for (size_t iobj=0; iobj<coll.second.size(); iobj++) {
+        const auto& obj = coll.second[iobj];
+        const auto& dR = deltaR(std::get<1>(obj), std::get<2>(obj), mu.eta(), mu.phi());
         if (minDR < dR) continue;
         minDR = dR;
-        idx = &trk - &tracks->at(0);
+        idx = iobj;
       }
-      if (debug_ > 0)
-        std::cout << "Trg " << ipath << ", min DR " << minDR << std::endl;
-      if (minDR < trgDRwindow_) trg_prb_idx[ipath].push_back(idx);
-      if (minDR < trgDRwindow_ && debug_ > 0)
-        std::cout << "Track matched!" << std::endl;
+      if (minDR >= trgDRwindow_) continue;
+      const auto& obj = coll.second[idx];
+      for (size_t ipath=0; ipath<ProbeFilters_.size(); ipath++) {
+        if (std::get<4>(obj).find(ipath)==std::get<4>(obj).end()) continue;
+        trg_prb_idx[ipath].push_back(imu);
+      }
     }
   }
 
@@ -451,12 +470,14 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
                 << mu.eta() << " phi " << mu.phi() << std::endl;
     for (const reco::Track& trk : *tracks) {
       if (mu.charge() != trk.charge()) continue;
-      if (fabs(mu.vz() - trk.vz()) > maxdz_trk_mu_ && maxdz_trk_mu_ > 0)
+      if (mu.innerTrack().isNull()) continue;
+      const auto& muTrk = *mu.innerTrack();
+      if (fabs(muTrk.vz() - trk.vz()) > maxdz_trk_mu_ && maxdz_trk_mu_ > 0)
         continue;
-      if (fabs(mu.pt() - trk.pt()) / mu.pt() > maxpt_relative_dif_trk_mu_ &&
+      if (fabs(muTrk.pt() - trk.pt()) / muTrk.pt() > maxpt_relative_dif_trk_mu_ &&
           maxpt_relative_dif_trk_mu_ > 0)
         continue;
-      float DR = deltaR(mu.eta(), mu.phi(), trk.eta(), trk.phi());
+      float DR = deltaR(muTrk.eta(), muTrk.phi(), trk.eta(), trk.phi());
       if (debug_ > 1)
         std::cout << "   DR " << DR << "  " << mu.eta() << "  " << mu.phi()
                   << "  " << trk.eta() << "  " << trk.phi() << std::endl;
