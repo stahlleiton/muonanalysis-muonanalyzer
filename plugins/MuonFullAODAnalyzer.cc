@@ -94,7 +94,7 @@ class MuonFullAODAnalyzer : public edm::one::EDAnalyzer<> {
   void beginJob() override;
   bool HLTaccept(const edm::Event&, NtupleContent&, std::vector<std::string>&);
   typedef std::map<std::string, std::vector<std::tuple<float, float, float, std::set<size_t>, std::set<size_t> > > > TRGInfo;
-  void HLTmuon(const edm::Event&, TRGInfo&, std::vector<std::string>&, const int&);
+  void HLTmuon(const edm::Event&, TRGInfo&, const int&);
   void analyze(const edm::Event&, const edm::EventSetup&) override;
   void endJob() override;
 
@@ -242,7 +242,6 @@ bool MuonFullAODAnalyzer::HLTaccept(const edm::Event& iEvent, NtupleContent& nt,
 
 void MuonFullAODAnalyzer::HLTmuon(const edm::Event& iEvent,
                                   TRGInfo& trgInfo,
-                                  std::vector<std::string>& HLTFilters,
                                   const int& debug_) {
   edm::Handle<trigger::TriggerEvent> triggerObjects;
   iEvent.getByToken(trigobjectsToken_, triggerObjects);
@@ -252,8 +251,8 @@ void MuonFullAODAnalyzer::HLTmuon(const edm::Event& iEvent,
   for (size_t filterIndex=0; filterIndex < triggerObjects->sizeFilters(); filterIndex++) {
     TString TrigFilter = triggerObjects->filterLabel(filterIndex);
     const trigger::Keys& keys = (*triggerObjects).filterKeys(filterIndex);
-    for (size_t ipath=0; ipath<HLTFilters.size(); ipath++) {
-      if (!TrigFilter.Contains(TRegexp(TString(HLTFilters[ipath])))) continue;
+    for (size_t ipath=0; ipath<HLTFilters_.size(); ipath++) {
+      if (!TrigFilter.Contains(TRegexp(TString(HLTFilters_[ipath])))) continue;
       for (size_t j = 0; j < keys.size(); j++) tagFilters[keys[j]].insert(ipath);
     }
     for (size_t ipath=0; ipath<ProbeFilters_.size(); ipath++) {
@@ -264,9 +263,9 @@ void MuonFullAODAnalyzer::HLTmuon(const edm::Event& iEvent,
   if (tagFilters.empty() && probeFilters.empty()) return;
   // add trigger objects per collection
   const auto& cK = triggerObjects->collectionKeys();
-  for (size_t i=1; i<cK.size(); i++) {
+  for (size_t i=0; i<cK.size(); i++) {
     const auto& coll = triggerObjects->collectionTag(i).encode();
-    for (size_t j=cK[i-1]; j<cK[i]; j++) {
+    for (size_t j=(i<1 ? 0 : cK[i-1]); j<cK[i]; j++) {
       trigger::TriggerObject foundObject = (allTriggerObjects)[j];
       if (fabs(foundObject.id()) != 13) continue;
       trgInfo[coll].emplace_back(std::make_tuple(foundObject.pt(), foundObject.eta(), foundObject.phi(), tagFilters[j], probeFilters[j]));
@@ -356,9 +355,7 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
   // check if path fired, if so save hlt muons
   if (!HLTaccept(iEvent, nt, HLTPaths_)) return;
   TRGInfo trgInfo;
-  auto filters = HLTFilters_;
-  filters.insert(filters.begin(), ProbeFilters_.begin(), ProbeFilters_.end());
-  HLTmuon(iEvent, trgInfo, filters, debug_);
+  HLTmuon(iEvent, trgInfo, debug_);
 
   // gen information
   MuonGenAnalyzer genmu;

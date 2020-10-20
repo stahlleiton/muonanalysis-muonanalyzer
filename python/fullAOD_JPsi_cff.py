@@ -12,7 +12,7 @@ Path=["HLT_HIL3Mu5_NHitQ10_v","HLT_HIL3Mu0NHitQ10_L2Mu0_MAXdR3p5_M1to5_v","HLT_H
 Filter=["hltL3fL1sL1SingleMuOpenL1f0L2f0L3Filtered5NHitQ10","hltL3f0L3Mu0L2Mu0DR3p5FilteredNHitQ10M1to5","hltL3f0L3Mu2p5NHitQ10L2Mu2FilteredM7toinf","hltL3fL1sSingleMu3L1f0L2f0L3Filtered3", "hltL3fL1sSingleMu3OR5L1f0L2f0L3Filtered5","hltL3fL1sSingleMu3OR5L1f0L2f0L3Filtered7","hltL3fL1sSingleMu7L1f0L2f0L3Filtered12"]
 
 #PbPb18 J/psi
-Path_tag=["HLT_HIL3Mu5_NHitQ10_v*",]  #WARNING lower than 10 path!!!!
+Path_tag=["HLT_HIL3Mu5_NHitQ10_v",]  #WARNING lower than 10 path!!!!
 Filter_tag=["hltL3fL1sL1SingleMuOpenL1f0L2f0L3Filtered5NHitQ10"]
 
 if len(Path)>10:
@@ -37,7 +37,7 @@ muon = cms.EDAnalyzer('MuonFullAODAnalyzer',
            gen = cms.InputTag("genParticles"),
            ProbePaths=cms.vstring(Path),
            ProbeFilters=cms.vstring(Filter),
-           trgDRwindow= cms.double(0.3), # dr winwow hlt mu/offline
+           trgDRwindow= cms.double(0.1), # dr winwow hlt mu/offline
            tagQuality = cms.uint32(3),
            tagSelection = cms.string("((abs(eta)<1.2 && pt>=3.5) || (1.2<=abs(eta) && abs(eta)<2.1 && pt>=5.47-1.89*abs(eta)) || (2.1<=abs(eta) && abs(eta)<2.4 && pt>=1.5)) && abs(eta)<2.4"),
            #tagSelection = cms.string("pt()>0"),
@@ -50,11 +50,11 @@ muon = cms.EDAnalyzer('MuonFullAODAnalyzer',
            RequireVtxCreation = cms.bool(False),
            minSVtxProb = cms.double(-0.01),
            maxDzProbeTrkMuon = cms.double(10.01), # max Dz(mu1,mu2)
-           maxRelPtProbeTrkMuon = cms.double(20.0),# max [pt(mu)-pt(trk)]/pt(trk) for probe/offline
-           maxDRProbeTrkMuon =  cms.double(0.03), # max DR for probe/offline
-           maxDRProbeTrkDSA =  cms.double(0.2), # max DR for general track and dSA
+           maxRelPtProbeTrkMuon = cms.double(10.0),# max [pt(mu)-pt(trk)]/pt(trk) for probe/offline
+           maxDRProbeTrkMuon =  cms.double(0.1), # max DR for probe/offline
+           maxDRProbeTrkDSA =  cms.double(0.1), # max DR for general track and dSA
            momPdgId= cms.uint32(443),
-           genRecoDrMatch = cms.double(0.03),
+           genRecoDrMatch = cms.double(0.1),
            debug = cms.int32(0)
 
 )
