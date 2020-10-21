@@ -130,9 +130,6 @@ class MuonFullAODAnalyzer : public edm::one::EDAnalyzer<> {
                                    // that do not have a vertex
   const double
       minSVtxProb_;  // min probability of a vertex to be kept. If <0 inactive
-  const double maxdz_trk_mu_;
-  const double maxpt_relative_dif_trk_mu_;
-  const double maxdr_trk_mu_;
   const double maxdr_trk_dsa_;
   const unsigned momPdgId_;
   const double genRecoDrMatch_;
@@ -196,10 +193,6 @@ MuonFullAODAnalyzer::MuonFullAODAnalyzer(const edm::ParameterSet& iConfig)
       pairDz_(iConfig.getParameter<double>("pairDz")),
       RequireVtxCreation_(iConfig.getParameter<bool>("RequireVtxCreation")),
       minSVtxProb_(iConfig.getParameter<double>("minSVtxProb")),
-      maxdz_trk_mu_(iConfig.getParameter<double>("maxDzProbeTrkMuon")),
-      maxpt_relative_dif_trk_mu_(
-          iConfig.getParameter<double>("maxRelPtProbeTrkMuon")),
-      maxdr_trk_mu_(iConfig.getParameter<double>("maxDRProbeTrkMuon")),
       maxdr_trk_dsa_(iConfig.getParameter<double>("maxDRProbeTrkDSA")),
       momPdgId_(iConfig.getParameter<unsigned>("momPdgId")),
       genRecoDrMatch_(iConfig.getParameter<double>("genRecoDrMatch")),
@@ -359,41 +352,21 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
 
   // extract probes
   reco::MuonCollection probes;
-  std::map<reco::TrackRef, reco::MuonRef> trk_muon_map;
   for (size_t idx=0; idx<tracks->size(); idx++) {
     const auto& trk = reco::TrackRef(tracks, idx);
-    float minDR = 1000;
-    reco::MuonRef muon;
-    for (size_t imu=0; imu<muons->size(); imu++) {
-      const auto& mu = reco::MuonRef(muons, imu);
-      if (mu->charge() != trk->charge()) continue;
-      if (mu->track().isNull()) continue;
-      const auto& muTrk = *mu->track();
-      if (fabs(muTrk.vz() - trk->vz()) > maxdz_trk_mu_ && maxdz_trk_mu_ > 0)
-        continue;
-      if (fabs(muTrk.pt() - trk->pt()) / muTrk.pt() > maxpt_relative_dif_trk_mu_ &&
-          maxpt_relative_dif_trk_mu_ > 0)
-        continue;
-      float DR = deltaR(muTrk.eta(), muTrk.phi(), trk->eta(), trk->phi());
-      if (debug_ > 1)
-        std::cout << "   DR " << DR << "  " << muTrk.eta() << "  " << muTrk.phi()
-                  << "  " << trk->eta() << "  " << trk->phi() << std::endl;
-      if (minDR < DR) continue;
-      minDR = DR;
-      muon = mu;
+    bool isMuon = false;
+    for (const auto& mu : *muons) {
+      if (mu.track().isNull() || mu.track()!=trk) continue;
+      probes.push_back(mu);
+      isMuon = true;
+      break;
     }
-    if (minDR <= maxdr_trk_mu_) {
-      trk_muon_map[trk] = muon;
-      probes.push_back(*muon);
-    }
-    else {
+    if (!isMuon) {
       math::XYZTLorentzVector p4(trk->px(), trk->py(), trk->pz(), std::sqrt(trk->p()*trk->p() + MU_MASS*MU_MASS));
       probes.push_back(reco::Muon(trk->charge(), p4, trk->vertex()));
       probes.back().setInnerTrack(trk);
     }
   }
-  if (debug_ > 0)
-    std::cout << "Matched trk-mu " << trk_muon_map.size() << std::endl;
 
   // gen information
   MuonGenAnalyzer genmu;
@@ -611,26 +584,13 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
         nt.probe_trg[ipath] = (std::find(trg.begin(), trg.end(), &probe - &probes.at(0)) != trg.end());
       }
 
-      if (trk_muon_map[probe.track()].isNull()) {
-        FillProbeBranches<reco::Muon, reco::Track>(probe, *tracks, nt,
-                                                   false);
-        if (debug_ > 0) std::cout << "  Unsuccessful probe " << std::endl;
-      } else {
-        if (debug_ > 0)
-          std::cout << "  Successful probe pt "
-                    << probe.pt() << " eta "
-                    << probe.eta() << " phi "
-                    << probe.phi() << std::endl;
-        FillProbeBranches<reco::Muon, reco::Track>(probe, *tracks, nt, true);
-        /*for ( const std::string path: ProbePaths_){
-           if (
-        deltaR(muons->at(trk_muon_map.second[idx]).eta(),muons->at(
-                trk_muon_map.second[idx]).phi(),nt.prb_eta[&path-&ProbePaths_[0]],
-                nt.prb_phi[&path-&ProbePaths_[0]])<trgDRwindow_)
-             nt.probe_trg[&path-&ProbePaths_[0]]=true;
-           else nt.probe_trg[&path-&ProbePaths_[0]]=false;
-        }*/
-      }
+      const bool isMuon = probe.muonBestTrackType()!=reco::Muon::None;
+      FillProbeBranches<reco::Muon, reco::Track>(probe, *tracks, nt, isMuon);
+      if (debug_ > 0)
+        std::cout << "  " << (isMuon?"Successful":"Unsuccessful") << " probe pt "
+                  << probe.pt() << " eta "
+                  << probe.eta() << " phi "
+                  << probe.phi() << std::endl;
 
       if (itdsa == trk_dsA_map.first.end()) {
         FillProbeBranchesdSA<reco::Track>(*probe.track(), nt, false);
