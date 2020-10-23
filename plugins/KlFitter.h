@@ -18,7 +18,7 @@
 
 class KlFitter {
  public:
-  KlFitter(std::vector<reco::TransientTrack> &);
+  KlFitter(const std::vector<reco::TransientTrack> &);
   ~KlFitter();
 
   void fillNtuple(NtupleContent &nt);

@@ -8,8 +8,8 @@
 #ifndef NTUPLECONTENT_H
 #define NTUPLECONTENT_H
 #include <string>
+#include <algorithm>
 #include <vector>
-#include "TString.h"
 #include "TTree.h"
 
 class NtupleContent {
@@ -19,6 +19,7 @@ class NtupleContent {
   void SetTree(TTree *t1);
   void CreateBranches(const std::vector<std::string> &);
   void CreateExtraTrgBranches(const std::vector<std::string> &);
+  void CreateProbeFlagBranches(const std::vector<std::string> &);
   void ClearBranches();
 
   // Standard stuff
@@ -47,7 +48,7 @@ class NtupleContent {
   int iprobe;
 
   // Triggers
-  bool trigger[10];
+  std::map<std::string, bool> trigger;
   std::vector<float> trg_pt;
   std::vector<float> trg_eta;
   std::vector<float> trg_phi;
@@ -56,7 +57,10 @@ class NtupleContent {
   std::vector<float> prb_eta;
   std::vector<float> prb_phi;
   // Triggers - probe
-  bool probe_trg[10] = {false};
+  std::map<std::string, bool> probe_trg;
+
+  // Flags - probe
+  std::map<std::string, bool> probe_flag;
 
   float genmu1_pt;
   float genmu1_eta;

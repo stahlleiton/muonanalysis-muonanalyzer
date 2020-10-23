@@ -21,14 +21,14 @@ class MuonGenAnalyzer {
   virtual ~MuonGenAnalyzer();
 
   void SetInputs(const edm::Event &,
-                 const edm::EDGetTokenT<edm::View<reco::GenParticle>> &,
+                 const edm::EDGetTokenT<reco::GenParticleCollection> &,
                  const int &);
   void FillNtuple(NtupleContent &);
+  std::vector<reco::GenParticleRef> gmuons;
 
  private:
-  edm::Handle<edm::View<reco::GenParticle>> gens;
-  TLorentzVector gmuon1, gmuon2;
-  int gcharge1, gcharge2;
+  edm::Handle<reco::GenParticleCollection> gens;
+  reco::GenParticleRef gmuon1, gmuon2;
   //    unsigned reco_idx1,reco_idx2;
   bool success = true;
 };

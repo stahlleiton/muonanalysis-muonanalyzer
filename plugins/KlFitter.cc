@@ -1,6 +1,6 @@
 #include "KlFitter.h"
 
-KlFitter::KlFitter(std::vector<reco::TransientTrack> &vecttrk) {
+KlFitter::KlFitter(const std::vector<reco::TransientTrack> &vecttrk) {
   KalmanVertexFitter vtxFitter(true);
   dimuvtx = vtxFitter.vertex(vecttrk);
   if (!dimuvtx.isValid())
@@ -18,9 +18,7 @@ void KlFitter::fillNtuple(NtupleContent &nt) {
   if (status_) {
     nt.pair_svprob = prob_;
     nt.pair_fit_mass =
-        DimuonMass(refited[0].track().pt(), refited[0].track().eta(),
-                   refited[0].track().phi(), refited[1].track().pt(),
-                   refited[1].track().eta(), refited[1].track().phi());
+        DimuonMass(refited[0].track(), refited[1].track());
   } else {
     nt.pair_svprob = -1;
     nt.pair_fit_mass = -1;

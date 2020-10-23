@@ -101,7 +101,7 @@ class MuonMiniAODAnalyzer
   edm::EDGetToken PFCands_;
   edm::EDGetToken LostTracks_;
   edm::EDGetTokenT<edm::TriggerResults> trgresultsToken_;
-  edm::EDGetTokenT<edm::View<reco::GenParticle>> genToken_;
+  edm::EDGetTokenT<reco::GenParticleCollection> genToken_;
   std::vector<std::string> HLTPaths_;
   std::vector<std::string> ProbePaths_;
   const unsigned int tagQual_;
@@ -155,7 +155,7 @@ MuonMiniAODAnalyzer::MuonMiniAODAnalyzer(const edm::ParameterSet& iConfig)
           iConfig.getParameter<edm::InputTag>("lostTracks"))),
       trgresultsToken_(consumes<edm::TriggerResults>(
           iConfig.getParameter<edm::InputTag>("triggerResults"))),
-      genToken_(consumes<edm::View<reco::GenParticle>>(
+      genToken_(consumes<reco::GenParticleCollection>(
           iConfig.getParameter<edm::InputTag>("gen"))),
       HLTPaths_(iConfig.getParameter<std::vector<std::string>>("HLTPaths")),
       ProbePaths_(iConfig.getParameter<std::vector<std::string>>("ProbePaths")),
@@ -195,7 +195,6 @@ bool MuonMiniAODAnalyzer::HLTaccept(const edm::Event& iEvent, NtupleContent& nt,
   edm::TriggerNames trigName;
   trigName = iEvent.triggerNames(*trigResults);
   bool EvtFire = false;
-  unsigned int ipath = 0;
   for (auto path : HLTPaths) {
     bool TrgFire = false;
     for (unsigned int itrg = 0; itrg < trigResults->size(); ++itrg) {
@@ -205,8 +204,7 @@ bool MuonMiniAODAnalyzer::HLTaccept(const edm::Event& iEvent, NtupleContent& nt,
       EvtFire = true;
       TrgFire = true;
     }
-    nt.trigger[ipath] = TrgFire;
-    ipath++;
+    nt.trigger.at(path) = TrgFire;
   }
   return EvtFire;
 }
@@ -258,14 +256,10 @@ void MuonMiniAODAnalyzer::analyze(const edm::Event& iEvent,
   if (!iEvent.isRealData()) {
     genmu.SetInputs(iEvent, genToken_, momPdgId_);
     genmu.FillNtuple(nt);
-    auto reco_match_genmu1 = MatchReco<pat::Muon>(
-        *muons, nt.genmu1_eta, nt.genmu1_phi, genRecoDrMatch_);
-    auto reco_match_genmu2 = MatchReco<pat::Muon>(
-        *muons, nt.genmu2_eta, nt.genmu2_phi, genRecoDrMatch_);
-    if (reco_match_genmu1.first)
-      matched_muon_idx.push_back(reco_match_genmu1.second);
-    if (reco_match_genmu2.first)
-      matched_muon_idx.push_back(reco_match_genmu2.second);
+    size_t idx;
+    for (const auto& gmu : genmu.gmuons)
+      if (MatchByDeltaR(idx, *gmu, *muons, genRecoDrMatch_))
+        matched_muon_idx.push_back(idx);
   }
 
   // Find triggering muon
@@ -307,14 +301,10 @@ void MuonMiniAODAnalyzer::analyze(const edm::Event& iEvent,
   }
   std::vector<unsigned> matched_track_idx;
   if (!iEvent.isRealData()) {
-    auto reco_match_genmu1 = MatchReco<pat::PackedCandidate>(
-        tracks, nt.genmu1_eta, nt.genmu1_phi, genRecoDrMatch_);
-    auto reco_match_genmu2 = MatchReco<pat::PackedCandidate>(
-        tracks, nt.genmu2_eta, nt.genmu2_phi, genRecoDrMatch_);
-    if (reco_match_genmu1.first)
-      matched_track_idx.push_back(reco_match_genmu1.second);
-    if (reco_match_genmu2.first)
-      matched_track_idx.push_back(reco_match_genmu2.second);
+    size_t idx;
+    for (const auto& gmu : genmu.gmuons)
+      if (MatchByDeltaR(idx, *gmu, tracks, genRecoDrMatch_))
+        matched_track_idx.push_back(idx);
   }
   std::pair<std::vector<unsigned>, std::vector<unsigned>> trk_muon_map;
   for (const auto& mu : *muons) {
@@ -340,8 +330,7 @@ void MuonMiniAODAnalyzer::analyze(const edm::Event& iEvent,
     for (const auto& probe : tracks) {
       if (tag.first.charge() == probe.charge()) continue;
       if (fabs(tag.first.vz() - probe.vz()) > pairDz_) continue;
-      float mass = DimuonMass(tag.first.pt(), tag.first.eta(), tag.first.phi(),
-                              probe.pt(), probe.eta(), probe.phi());
+      float mass = DimuonMass(tag.first, probe);
 
       if (mass < pairMassMin_ || mass > pairMassMax_) continue;
       std::vector<reco::TransientTrack> trk_pair = {

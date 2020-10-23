@@ -37,24 +37,24 @@ muon = cms.EDAnalyzer('MuonFullAODAnalyzer',
            gen = cms.InputTag("genParticles"),
            ProbePaths=cms.vstring(Path),
            ProbeFilters=cms.vstring(Filter),
-           trgDRwindow= cms.double(0.1), # dr winwow hlt mu/offline
-           tagQuality = cms.uint32(3),
-           tagSelection = cms.string("((abs(eta)<1.2 && pt>=3.5) || (1.2<=abs(eta) && abs(eta)<2.1 && pt>=5.47-1.89*abs(eta)) || (2.1<=abs(eta) && abs(eta)<2.4 && pt>=1.5)) && abs(eta)<2.4"),
-           #tagSelection = cms.string("pt()>0"),
-           probeHPurity = cms.bool(False),
+           probeFlags = cms.PSet(
+             hybridID = cms.string("isTrackerMuon"),
+           ),
+           trgDRwindow = cms.double(0.1), # dr winwow hlt L3 mu/offline
+           trgRelDPtwindow = cms.double(10.), # rel dpt winwow hlt L3 mu/offline
+           trgL2DRwindow = cms.double(0.3), # dr winwow hlt L2 mu/offline
+           trgL2RelDPtwindow = cms.double(10.), # rel dpt winwow hlt L2 mu/offline
+           trgL1DRwindow = cms.double(0.3), # dr winwow hlt L1 mu/offline
+           trgL1DEtawindow = cms.double(0.2), # deta winwow hlt L1 mu/offline
+           tagSelection = cms.string("passed(8) && ((abs(eta)<1.2 && pt>=3.5) || (1.2<=abs(eta) && abs(eta)<2.1 && pt>=5.47-1.89*abs(eta)) || (2.1<=abs(eta) && abs(eta)<2.4 && pt>=1.5)) && abs(eta)<2.4"),
            probeSelection = cms.string("((abs(eta)<1.2 && pt>=3.5) || (1.2<=abs(eta) && abs(eta)<2.1 && pt>=5.47-1.89*abs(eta)) || (2.1<=abs(eta) && abs(eta)<2.4 && pt>=1.5)) && abs(eta)<2.4"),
-           #probeSelection = cms.string("pt()>0"),
-           pairMassMin = cms.double(2),
-           pairMassMax = cms.double(4),
-           pairDz = cms.double(10.1),
+           pairSelection = cms.string("(mass >= 2 && mass <= 4) && abs(daughter(0).vz - daughter(1).vz) <= 10.1"),
            RequireVtxCreation = cms.bool(False),
            minSVtxProb = cms.double(-0.01),
-           maxDzProbeTrkMuon = cms.double(10.01), # max Dz(mu1,mu2)
-           maxRelPtProbeTrkMuon = cms.double(10.0),# max [pt(mu)-pt(trk)]/pt(trk) for probe/offline
-           maxDRProbeTrkMuon =  cms.double(0.1), # max DR for probe/offline
            maxDRProbeTrkDSA =  cms.double(0.1), # max DR for general track and dSA
            momPdgId= cms.uint32(443),
            genRecoDrMatch = cms.double(0.1),
+           genRecoRelDPtMatch = cms.double(0.1),
            debug = cms.int32(0)
 
 )

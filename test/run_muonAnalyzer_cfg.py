@@ -73,8 +73,9 @@ if len(options.inputFiles) == 0:
             if options.isMC:
                 options.inputFiles.append('/store/mc/RunIIAutumn18DRPremix/JpsiToMuMu_JpsiPt8_TuneCP5_13TeV-pythia8/AODSIM/102X_upgrade2018_realistic_v15-v1/270001/FFF2FC1D-18CB-7244-9663-4E36963494B7.root')
             else:
+                options.inputFiles.append('file:/afs/cern.ch/user/a/anstahll/work/TagAndProbe/Framework/CMSSW_10_3_2/src/test.root'),
                 #options.inputFiles.append('/store/data/Run2018A/Charmonium/AOD/17Sep2018-v1/100001/07679496-4DEF-1B44-BA04-768765A80599.root')
-                options.inputFiles.append('/store/hidata/HIRun2018A/HISingleMuon/AOD/04Apr2019-v1/10000/0CAC290B-5FAD-BB4A-B607-922EE6B663B0.root')
+                #options.inputFiles.append('root://xrootd-cms.infn.it//store/hidata/HIRun2018A/HISingleMuon/AOD/04Apr2019-v1/260005/610403D7-FC42-2344-B0A9-9A3ED46A5CD0.root')
 
 
 if options.outputFile=="":

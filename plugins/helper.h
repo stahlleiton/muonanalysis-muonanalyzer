@@ -12,11 +12,11 @@
 #include "DataFormats/TrackReco/interface/Track.h"
 
 const float MU_MASS = 0.10565837;
-inline float DimuonMass(float mu1pt, float mu1eta, float mu1phi, float mu2pt,
-                        float mu2eta, float mu2phi) {
-  math::PtEtaPhiMLorentzVector mu1(mu1pt, mu1eta, mu1phi, MU_MASS);
-  math::PtEtaPhiMLorentzVector mu2(mu2pt, mu2eta, mu2phi, MU_MASS);
-  return (mu1 + mu2).mass();
+template <class T, class C>
+inline double DimuonMass(const T& mu1, const C& mu2) {
+  math::PtEtaPhiMLorentzVector mu1P4(mu1.pt(), mu1.eta(), mu1.phi(), MU_MASS);
+  math::PtEtaPhiMLorentzVector mu2P4(mu2.pt(), mu2.eta(), mu2.phi(), MU_MASS);
+  return (mu1P4 + mu2P4).mass();
 }
 
 template <typename TRK>
@@ -30,21 +30,53 @@ inline float TrackerEnergy04(const float eta_muon, const float phi_muon,
   return energy;
 }
 
-template <typename TRK>
-std::pair<bool, unsigned> MatchReco(const std::vector<TRK>& tracks,
-                                    const float& eta, const float& phi,
-                                    const double& dr_max) {
-  double minDR = 100;
-  unsigned idx = 0;
-  for (const auto& trk : tracks) {
-    if (minDR < deltaR(eta, phi, trk.eta(), trk.phi())) continue;
-    minDR = deltaR(eta, phi, trk.eta(), trk.phi());
-    idx = &trk - &tracks[0];
+template <class C>
+bool MatchByDeltaR(size_t& index,
+                   const math::XYZVector& s, const std::vector<C>& mV,
+                   const double& maxDR=1000., const double& maxRelDPt=-1., const double& maxDEta=-1.) {
+  std::pair<double, size_t> match({maxDR, 0});
+  for (const auto& m : mV) {
+    if (maxRelDPt > 0 && std::abs(s.rho() - m.pt())/m.pt() >= maxRelDPt) continue;
+    if (maxDEta > 0 && std::abs(s.eta() - m.eta()) >= maxDEta) continue;
+    const auto& dR = deltaR(s.eta(), s.phi(), m.eta(), m.phi());
+    if (dR < match.first)
+      match = std::make_pair(dR, &m - &mV.at(0));
   }
-  if (minDR < dr_max)
-    return std::make_pair(true, idx);
-  else
-    return std::make_pair(false, 0);
+  if (match.first >= maxDR) return false;
+  index = match.second;
+  return true;
+}
+
+template <class T, class C>
+bool MatchByDeltaR(size_t& index,
+                   const T& s, const std::vector<C>& mV,
+                   const double& maxDR=1000., const double& maxRelDPt=-1., const double& maxDEta=-1.) {
+  math::XYZVector mom(s.px(), s.py(), s.pz());
+  return MatchByDeltaR(index, mom, mV, maxDR, maxRelDPt, maxDEta);
+}
+
+template <class C>
+bool MatchByTrackRef(size_t& index,
+                     const reco::TrackRef& s, const std::vector<C>& mV) {
+  for (const auto& m : mV) {
+    if (m.track().isNull() || m.track()!=s) continue;
+    index = &m - &mV.at(0);
+    return true;
+  }
+  return false;
+}
+
+template <class T>
+bool MatchByRef(size_t& index,
+                const edm::Ref<std::vector<T>>& s, const edm::Handle<std::vector<T>>& mH) {
+  if (!mH.isValid() || mH.id()!=s.id()) return false;
+  for (const auto& m : *mH) {
+    const auto& r = edm::Ref<std::vector<T>>(mH, &m - &mH->at(0));
+    if (r!=s) continue;
+    index = r.key();
+    return true;
+  }
+  return false;
 }
 
 #endif

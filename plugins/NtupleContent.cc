@@ -30,8 +30,11 @@ void NtupleContent::CreateBranches(const std::vector<std::string> &HLTs) {
   t1->Branch("genmu2_pt", &genmu2_pt);
   t1->Branch("genmu2_eta", &genmu2_eta);
   t1->Branch("genmu2_phi", &genmu2_phi);
-  for (unsigned int ihlt = 0; ihlt < HLTs.size(); ihlt++)
-    t1->Branch(TString(HLTs[ihlt]), &trigger[ihlt]);
+  for (const auto& t : HLTs) {
+    auto n = t;
+    n.erase(std::remove(n.begin(), n.end(), '*'), n.end());
+    t1->Branch(n.c_str(), &trigger[t]);
+  }
   // Tag specific
   t1->Branch("tag_pt", &tag_pt);
   t1->Branch("tag_eta", &tag_eta);
@@ -100,10 +103,17 @@ void NtupleContent::CreateBranches(const std::vector<std::string> &HLTs) {
   t1->Branch("pair_dz", &pair_dz);
 }
 
-void NtupleContent::CreateExtraTrgBranches(
-    const std::vector<std::string> &HLTs) {
-  for (unsigned int ihlt = 0; ihlt < HLTs.size(); ihlt++)
-    t1->Branch(TString("probe_" + HLTs[ihlt]), &probe_trg[ihlt]);
+void NtupleContent::CreateExtraTrgBranches(const std::vector<std::string> &HLTs) {
+  for (const auto& t : HLTs) {
+    auto n = t;
+    n.erase(std::remove(n.begin(), n.end(), '*'), n.end());
+    t1->Branch(("probe_"+n).c_str(), &probe_trg[t]);
+  }
+}
+
+void NtupleContent::CreateProbeFlagBranches(const std::vector<std::string> &flags) {
+  for (const auto& t : flags)
+    t1->Branch(("probe_"+t).c_str(), &probe_flag[t]);
 }
 
 void NtupleContent::ClearBranches() {
@@ -123,9 +133,11 @@ void NtupleContent::ClearBranches() {
   nmuons = 0;
   ntag = 0;
 
-  for (unsigned int itrg = 0; itrg < 10; itrg++) trigger[itrg] = false;
+  for (auto& f : trigger) f.second = false;
 
-  for (unsigned int itrg = 0; itrg < 10; itrg++) probe_trg[itrg] = false;
+  for (auto& f : probe_trg) f.second = false;
+
+  for (auto& f : probe_flag) f.second = false;
   
   // Gens
   genmu1_pt = 0;
