@@ -28,9 +28,6 @@ class MuonGenAnalyzer {
 
  private:
   edm::Handle<reco::GenParticleCollection> gens;
-  reco::GenParticleRef gmuon1, gmuon2;
-  //    unsigned reco_idx1,reco_idx2;
-  bool success = true;
 };
 
 #endif

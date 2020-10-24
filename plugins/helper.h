@@ -66,17 +66,4 @@ bool MatchByTrackRef(size_t& index,
   return false;
 }
 
-template <class T>
-bool MatchByRef(size_t& index,
-                const edm::Ref<std::vector<T>>& s, const edm::Handle<std::vector<T>>& mH) {
-  if (!mH.isValid() || mH.id()!=s.id()) return false;
-  for (const auto& m : *mH) {
-    const auto& r = edm::Ref<std::vector<T>>(mH, &m - &mH->at(0));
-    if (r!=s) continue;
-    index = r.key();
-    return true;
-  }
-  return false;
-}
-
 #endif

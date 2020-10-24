@@ -3,28 +3,27 @@ option for AOD run'''
 
 import FWCore.ParameterSet.Config as cms
 
-#paths and corresponding l3 filters
-#Path=["HLT_Mu8_v","HLT_Mu17_v","HLT_Mu19_v","HLT_Mu20_v","HLT_IsoMu20_v","HLT_IsoMu24_v","HLT_Mu50"]  #WARNING lower than 10 path!!!!
-#Filter=["hltL3fL1sMu5L1f0L2f5L3Filtered8","hltL3fL1sMu15DQlqL1f0L2f10L3Filtered17","hltL3fL1sMu15DQlqL1f0L2f10L3Filtered19","hltL3fL1sMu18L1f0L2f10QL3Filtered20Q","hltL3crIsoL1sMu18L1f0L2f10QL3f20QL3trkIsoFiltered0p07","hltL3crIsoL1sSingleMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p07","hltL3fL1sMu22Or25L1f0L2f10QL3Filtered50Q"]
+#PbPb18 J/psi settings
+Path_probe=["HLT_HIL3Mu0NHitQ10_L2Mu0_MAXdR3p5_M1to5_v"]
+Filter_probe=["hltL3f0L3Mu0L2Mu0DR3p5FilteredNHitQ10M1to5", "hltL3f0DR3p5L3FilteredNHitQ10", "hltL2fDoubleMuOpenL2DR3p5PreFiltered0", "hltL1fL1sL1DoubleMuOpenMAXdR3p5L1Filtered0"]
 
-#PbPb18 J/psi
-Path=["HLT_HIL3Mu5_NHitQ10_v","HLT_HIL3Mu0NHitQ10_L2Mu0_MAXdR3p5_M1to5_v","HLT_HIL3Mu2p5NHitQ10_L2Mu2_M7toinf_v","HLT_HIL3Mu3_v","HLT_HIL3Mu5_v", "HLT_HIL3Mu7_v", "HLT_HIL3Mu12_v"]  #WARNING lower than 10 path!!!!
-Filter=["hltL3fL1sL1SingleMuOpenL1f0L2f0L3Filtered5NHitQ10","hltL3f0L3Mu0L2Mu0DR3p5FilteredNHitQ10M1to5","hltL3f0L3Mu2p5NHitQ10L2Mu2FilteredM7toinf","hltL3fL1sSingleMu3L1f0L2f0L3Filtered3", "hltL3fL1sSingleMu3OR5L1f0L2f0L3Filtered5","hltL3fL1sSingleMu3OR5L1f0L2f0L3Filtered7","hltL3fL1sSingleMu7L1f0L2f0L3Filtered12"]
+Path_tag=["HLT_HIL3Mu5_NHitQ10_v",]
+Filter_tag=["hltL3fL1sL1SingleMu*OpenL1f0L2f0L3Filtered5NHitQ10"]
 
-#PbPb18 J/psi
-Path_tag=["HLT_HIL3Mu5_NHitQ10_v",]  #WARNING lower than 10 path!!!!
-Filter_tag=["hltL3fL1sL1SingleMuOpenL1f0L2f0L3Filtered5NHitQ10"]
-
-if len(Path)>10:
-  print ("WARNING either put less than 11 paths, or increase the path quota from NtupleContent.h/.cc")
-  exit()
+InAcceptance = '((abs(eta)<1.2 && pt>=3.5) || (1.2<=abs(eta) && abs(eta)<2.1 && pt>=5.47-1.89*abs(eta)) || (2.1<=abs(eta) && abs(eta)<2.4 && pt>=1.5))'
+TightId = "passed('CutBasedIdTight')"
+HybridSoftId = "(isGlobalMuon && isTrackerMuon && "\
+               "innerTrack.hitPattern.trackerLayersWithMeasurement > 5 && "\
+               "innerTrack.hitPattern.pixelLayersWithMeasurement > 0 && "\
+               "abs(userFloat('innerTrack_dxy')) < 0.3 && abs(userFloat('innerTrack_dz')) < 20.)"
+LooseId = "(isTrackerMuon || isGlobalMuon || isPFMuon)"
 
 muon = cms.EDAnalyzer('MuonFullAODAnalyzer',
            isMC=cms.bool(False),
            pileupInfo=cms.InputTag('addPileupInfo'),
            Rho=cms.InputTag('fixedGridRhoFastjetAll'),
            beamSpot=cms.InputTag('offlineBeamSpot'),
-           vertices=cms.InputTag("offlinePrimaryVertices"),
+           vertices=cms.InputTag("offlinePrimaryVerticesRecovery"),
            muons=cms.InputTag("muons"),
            tracks=cms.InputTag("generalTracks"),
            dSAmuons=cms.InputTag("displacedStandAloneMuons"),
@@ -35,28 +34,37 @@ muon = cms.EDAnalyzer('MuonFullAODAnalyzer',
            triggerPaths=cms.vstring(Path_tag),
            triggerFilters=cms.vstring(Filter_tag),
            gen = cms.InputTag("genParticles"),
-           ProbePaths=cms.vstring(Path),
-           ProbeFilters=cms.vstring(Filter),
+           centrality = cms.InputTag("centralityBin","HFtowers"),
+           ProbePaths=cms.vstring(Path_probe),
+           ProbeFilters=cms.vstring(Filter_probe),
            probeFlags = cms.PSet(
-             hybridID = cms.string("isTrackerMuon"),
+             isHybridSoft = cms.string(HybridSoftId),
+             InAcceptance = cms.string(InAcceptance),
            ),
            trgDRwindow = cms.double(0.1), # dr winwow hlt L3 mu/offline
-           trgRelDPtwindow = cms.double(10.), # rel dpt winwow hlt L3 mu/offline
+           trgRelDPtwindow = cms.double(10.0), # rel dpt winwow hlt L3 mu/offline
            trgL2DRwindow = cms.double(0.3), # dr winwow hlt L2 mu/offline
-           trgL2RelDPtwindow = cms.double(10.), # rel dpt winwow hlt L2 mu/offline
+           trgL2RelDPtwindow = cms.double(10.0), # rel dpt winwow hlt L2 mu/offline
            trgL1DRwindow = cms.double(0.3), # dr winwow hlt L1 mu/offline
            trgL1DEtawindow = cms.double(0.2), # deta winwow hlt L1 mu/offline
-           tagSelection = cms.string("passed(8) && ((abs(eta)<1.2 && pt>=3.5) || (1.2<=abs(eta) && abs(eta)<2.1 && pt>=5.47-1.89*abs(eta)) || (2.1<=abs(eta) && abs(eta)<2.4 && pt>=1.5)) && abs(eta)<2.4"),
-           probeSelection = cms.string("((abs(eta)<1.2 && pt>=3.5) || (1.2<=abs(eta) && abs(eta)<2.1 && pt>=5.47-1.89*abs(eta)) || (2.1<=abs(eta) && abs(eta)<2.4 && pt>=1.5)) && abs(eta)<2.4"),
-           pairSelection = cms.string("(mass >= 2 && mass <= 4) && abs(daughter(0).vz - daughter(1).vz) <= 10.1"),
+           tagSelection = cms.string(InAcceptance+" && "+HybridSoftId),
+           probeSelection = cms.string(InAcceptance+" && "+LooseId),
+           pairSelection = cms.string("2.0 < mass < 4.0"),
            RequireVtxCreation = cms.bool(False),
            minSVtxProb = cms.double(-0.01),
            maxDRProbeTrkDSA =  cms.double(0.1), # max DR for general track and dSA
            momPdgId= cms.uint32(443),
            genRecoDrMatch = cms.double(0.1),
-           genRecoRelDPtMatch = cms.double(0.1),
+           genRecoRelDPtMatch = cms.double(10.0),
            debug = cms.int32(0)
-
 )
 
-fullAODSequence=cms.Sequence(muon)
+from MuonAnalysis.MuonAnalyzer.OfflinePrimaryVerticesRecovery_cfi import *
+from MuonAnalysis.MuonAnalyzer.collisionEventSelection_cff import *
+from RecoHI.HiCentralityAlgos.CentralityBin_cfi import *
+centralityBin.Centrality = cms.InputTag("hiCentrality")
+centralityBin.centralityVariable = cms.string("HFtowers")
+centralityBin.nonDefaultGlauberModel = cms.string("")
+primaryVertexFilter.src = cms.InputTag("offlinePrimaryVerticesRecovery")
+
+fullAODSequence=cms.Sequence(offlinePrimaryVerticesRecovery + collisionEventSelectionAODv2 + centralityBin + muon)

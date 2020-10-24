@@ -13,6 +13,7 @@
  <use name="DataFormats/Luminosity"/>
  <use name="DataFormats/TrackReco"/>
  <use name="RecoVertex/KalmanVertexFit"/>
+ <use name="RecoVertex/PrimaryVertexProducer"/>
  <use name="SimDataFormats/PileupSummaryInfo"/>
  <use name="SimTracker/TrackAssociation"/>
  <use name="TrackingTools/IPTools"/>
@@ -21,4 +22,5 @@
  <use name="TrackingTools/PatternTools"/>
  <use name="TrackingTools/TransientTrack"/>
  <use name="TrackingTools/Records"/>
- <use name="DataFormats/MuonReco" />
+ <use name="DataFormats/MuonReco"/>
+ <use name="DataFormats/HeavyIonEvent"/>

@@ -26,6 +26,7 @@ class NtupleContent {
   int run;
   int event;
   int ls;
+  int cent;
   bool fromFullAOD;
 
   // Beamspot and vertex

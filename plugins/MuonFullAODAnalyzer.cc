@@ -93,7 +93,7 @@ class MuonFullAODAnalyzer : public edm::one::EDAnalyzer<> {
 
  private:
   void beginJob() override;
-  bool HLTaccept(const edm::Event&, NtupleContent&, std::vector<std::string>&);
+  bool HLTaccept(const edm::Event&, NtupleContent&);
   void HLTmuon(const edm::Event&, TRGInfo&, const int&);
   pat::Muon MakePatMuon(const reco::Muon&, const bool&, const reco::Vertex&, const edm::ESHandle<MagneticField>&);
   math::XYZVector MomentumAt2ndMuonStation(const reco::Muon& muon, const edm::ESHandle<GlobalTrackingGeometry>& geometry);
@@ -112,6 +112,7 @@ class MuonFullAODAnalyzer : public edm::one::EDAnalyzer<> {
   edm::EDGetTokenT<edm::TriggerResults> trgresultsToken_;
   edm::EDGetTokenT<trigger::TriggerEvent> trigobjectsToken_;
   edm::EDGetTokenT<reco::GenParticleCollection> genToken_;
+  edm::EDGetTokenT<int> centToken_;
   std::map<std::string, std::vector<std::string>> HLTPaths_;
   std::map<std::string, std::vector<std::string>> HLTFilters_;
 
@@ -171,6 +172,7 @@ MuonFullAODAnalyzer::MuonFullAODAnalyzer(const edm::ParameterSet& iConfig)
           iConfig.getParameter<edm::InputTag>("triggerObjects"))),
       genToken_(consumes<reco::GenParticleCollection>(
           iConfig.getParameter<edm::InputTag>("gen"))),
+      centToken_(consumes<int>(iConfig.getParameter<edm::InputTag>("centrality"))),
       probeFlags_(iConfig.getParameter<edm::ParameterSet>("probeFlags")),
       trgDRwindow_(iConfig.getParameter<double>("trgDRwindow")),
       trgRelDPtwindow_(iConfig.getParameter<double>("trgRelDPtwindow")),
@@ -204,26 +206,26 @@ MuonFullAODAnalyzer::~MuonFullAODAnalyzer() {
   // time
 }
 
-bool MuonFullAODAnalyzer::HLTaccept(const edm::Event& iEvent, NtupleContent& nt,
-                                    std::vector<std::string>& HLTPaths) {
-  edm::Handle<edm::TriggerResults> trigResults;
-  iEvent.getByToken(trgresultsToken_, trigResults);
-  edm::TriggerNames trigName;
-  trigName = iEvent.triggerNames(*trigResults);
-  bool EvtFire = false;
-  for (auto path : HLTPaths) {
-    bool TrgFire = false;
-    for (unsigned int itrg = 0; itrg < trigResults->size(); ++itrg) {
-      const auto& path = trigName.triggerName(itrg);
-      if (!trigResults->accept(itrg)) continue;
-      if (!TString(path).Contains(TRegexp(TString(path)))) continue;
-      EvtFire = true;
-      TrgFire = true;
-      break;
-    }
-    nt.trigger.at(path) = TrgFire;
+bool MuonFullAODAnalyzer::HLTaccept(const edm::Event& iEvent, NtupleContent& nt) {
+  edm::Handle<edm::TriggerResults> trgR;
+  iEvent.getByToken(trgresultsToken_, trgR);
+  const auto& trgN = iEvent.triggerNames(*trgR);
+  // fill probe trigger results
+  for (const auto& path : HLTPaths_["probe"]) {
+    bool trgFire = false;
+    for (size_t i = 0; i < trgR->size(); i++)
+      if (trgR->accept(i) && TString(trgN.triggerName(i)).Contains(TRegexp(path))) {
+        trgFire = true;
+        break;
+      }
+    nt.trigger.at(path) = trgFire;
   }
-  return EvtFire;
+  // return true if at least one tag trigger fired
+  for (const auto& path : HLTPaths_["tag"])
+    for (size_t i = 0; i < trgR->size(); i++)
+      if (trgR->accept(i) && TString(trgN.triggerName(i)).Contains(TRegexp(path)))
+        return true;
+  return false;
 }
 
 void MuonFullAODAnalyzer::HLTmuon(const edm::Event& iEvent,
@@ -239,29 +241,27 @@ void MuonFullAODAnalyzer::HLTmuon(const edm::Event& iEvent,
   std::map<size_t, std::set<std::string>> objFilters;
   for (size_t filterIndex=0; filterIndex < triggerObjects->sizeFilters(); filterIndex++) {
     const auto& name = triggerObjects->filterLabel(filterIndex);
-    const auto& keys = (*triggerObjects).filterKeys(filterIndex);
-    for (const auto& filter : HLTFilters) {
-      if (TString(name).Contains(TRegexp(TString(filter))))
-        for (size_t j = 0; j < keys.size(); j++)
-          objFilters[keys[j]].insert(filter);
-    }
+    const auto& keys = triggerObjects->filterKeys(filterIndex);
+    for (const auto& filter : HLTFilters)
+      if (TString(name).Contains(TRegexp(filter)))
+        for (const auto& j : keys) objFilters[j].insert(filter);
   }
   if (objFilters.empty()) return;
   // add trigger objects per collection
   const auto& colKeys = triggerObjects->collectionKeys();
   const auto& objects = triggerObjects->getObjects();
-  for (size_t i=0; i<colKeys.size(); i++) {
-    const auto& col = triggerObjects->collectionTag(i).encode();
-    for (size_t j=(i<1 ? 0 : colKeys[i-1]); j<colKeys[i]; j++) {
-      const auto& obj = objects[j];
-      if (fabs(obj.id()) != 13) continue;
-      pat::TriggerObjectStandAlone trgObj(obj);
-      trgObj.setCollection(col);
-      for (const auto& name : objFilters[j]) trgObj.addFilterLabel(name);
-      trgInfo[col].push_back(trgObj);
-      if (debug_ > 0) std::cout << "Trg muon " << trgObj.pt() << std::endl;
+  for (const auto& c : {"L3Muon", "L2Muon", "Stage2Digis:Muon"})
+    for (size_t i=0; i<colKeys.size(); i++) {
+      const auto& col = triggerObjects->collectionTag(i).encode();
+      if (col.find(c)==std::string::npos) continue;
+      for (size_t j=(i<1 ? 0 : colKeys[i-1]); j<colKeys[i]; j++) {
+        trgInfo[col].emplace_back(objects[j]);
+        trgInfo[col].back().setCollection(col);
+        for (const auto& name : objFilters[j])
+          trgInfo[col].back().addFilterLabel(name);
+        if (debug_ > 0) std::cout << c << " pt: " << trgInfo[col].back().pt() << std::endl;
+      }
     }
-  }
 }
 
 pat::Muon MuonFullAODAnalyzer::MakePatMuon(const reco::Muon& src, const bool& isMuon,
@@ -354,29 +354,25 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
   nt.BSpot_z = theBeamSpot->z0();
   nt.nvertices = vertices->size();
 
+  edm::Handle<int> cent;
+  iEvent.getByToken(centToken_, cent);
+  if (cent.isValid()) nt.cent = *cent;
+
   // Pileup information
   edm::Handle<double> rhoHandle;
   iEvent.getByToken(rhoToken_, rhoHandle);
   nt.Rho = *rhoHandle;
 
-  float trueNumInteractions = -1;
-  int puNumInteractions = -1;
   if (!iEvent.isRealData()) {
     edm::Handle<std::vector<PileupSummaryInfo>> PupInfo;
     iEvent.getByToken(pileupSummaryToken_, PupInfo);
-    
-    for (auto PVI : *PupInfo) {
-      int BX = PVI.getBunchCrossing();
-      if (BX == 0) {
-        trueNumInteractions = PVI.getTrueNumInteractions();
-        puNumInteractions = PVI.getPU_NumInteractions();
-        break;
-      }
+    for (const auto& PVI : *PupInfo) {
+      if (PVI.getBunchCrossing() != 0) continue;
+      nt.trueNumInteractions = PVI.getTrueNumInteractions();
+      nt.puNumInteractions = PVI.getPU_NumInteractions();
+      break;
     }
   }
-
-  nt.trueNumInteractions = trueNumInteractions;
-  nt.puNumInteractions = puNumInteractions;
 
   if (debug_ > 0) std::cout << "New Evt " << nt.run << std::endl;
 
@@ -391,8 +387,8 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
   }
   if (!vertex.isValid()) return;  // skipping in absence of good vertex
 
-  // check if path fired
-  if (!HLTaccept(iEvent, nt, HLTPaths_["tag"])) return;
+  // fill HLT trigger decisions
+  if (!HLTaccept(iEvent, nt)) return;
 
   // select probes
   std::map<std::string, pat::MuonCollection> source;
@@ -429,12 +425,8 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
       for (auto& mu : s.second) {
         size_t iobj;
         if (c.first.find("L3Muon")!=std::string::npos) {
-          if (MatchByDeltaR(iobj, mu, c.second, trgDRwindow_, trgRelDPtwindow_)) {
-            std::cout << "L3 Muon FOUND: " << iobj << " , " << s.first << std::endl;
-            std::cout << "MUON: " << mu.pt() << " , " << mu.eta() << " , " << mu.phi() << std::endl;
-            std::cout << "HLT: " << c.second[iobj].pt() << " , " << c.second[iobj].eta() << " , " << c.second[iobj].phi() << std::endl;
+          if (MatchByDeltaR(iobj, mu, c.second, trgDRwindow_, trgRelDPtwindow_))
             mu.addTriggerObjectMatch(c.second[iobj]);
-          }
         }
         else if (c.first.find("L2Muon")!=std::string::npos) {
           if (MatchByDeltaR(iobj, mu, c.second, trgL2DRwindow_, trgL2RelDPtwindow_))
@@ -447,22 +439,6 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
         }
       }
 
-  // extract gen information
-  MuonGenAnalyzer genmu;
-  if (!iEvent.isRealData()) {
-    genmu.SetInputs(iEvent, genToken_, momPdgId_);
-    genmu.FillNtuple(nt);
-    reco::GenParticleCollection gmuons;
-    for (const auto& gmu : genmu.gmuons) gmuons.push_back(*gmu);
-    // perform gen-reco matching
-    for (auto& s : source)
-      for (auto& mu : s.second) {
-        size_t igen;
-        if (MatchByDeltaR(igen, mu, gmuons, genRecoDrMatch_, genRecoRelDPtMatch_))
-          mu.addGenParticleRef(genmu.gmuons[igen]);
-      }
-  }
-
   // remove tags that did not trigger
   auto r = std::remove_if(source["tag"].begin(), source["tag"].end(), [&](auto& tag) -> bool {
     for (const auto& f : HLTFilters_["tag"])
@@ -471,8 +447,27 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
     return true;
   });
   source["tag"].erase(r, source["tag"].end());
+  if (source["tag"].empty()) return;
   nt.ntag = source["tag"].size();
-    
+
+  // extract gen information
+  MuonGenAnalyzer genmu;
+  if (!iEvent.isRealData()) {
+    genmu.SetInputs(iEvent, genToken_, momPdgId_);
+    genmu.FillNtuple(nt);
+    // perform gen-track matching
+    size_t idx;
+    std::map<reco::TrackRef, reco::GenParticleRef> genRecoMap;
+    for (const auto& gmu : genmu.gmuons)
+      if (MatchByDeltaR(idx, *gmu, *tracks, genRecoDrMatch_, genRecoRelDPtMatch_))
+        genRecoMap.emplace(reco::TrackRef(tracks, idx), gmu);
+    // add gen particle
+    for (auto& s : source)
+      for (auto& mu : s.second)
+        if (genRecoMap[mu.track()].isNonnull())
+          mu.addGenParticleRef(genRecoMap[mu.track()]);
+  }
+
   // perform general - muon track matching
   std::map<std::string, std::map<reco::TrackRef, reco::TrackRef>> trk_map;
   std::map<std::string, edm::Handle<std::vector<reco::Track>>> muTrkMap = {
@@ -566,7 +561,7 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
 void MuonFullAODAnalyzer::beginJob() {
   t1 = fs->make<TTree>("Events", "Events");
   nt.SetTree(t1);
-  nt.CreateBranches(HLTPaths_["tag"]);
+  nt.CreateBranches(HLTPaths_["probe"]);
   nt.CreateExtraTrgBranches(HLTFilters_["probe"]);
   nt.CreateProbeFlagBranches(probeFlags_.getParameterNames());
 }

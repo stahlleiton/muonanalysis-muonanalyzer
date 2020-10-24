@@ -11,6 +11,7 @@ void NtupleContent::CreateBranches(const std::vector<std::string> &HLTs) {
   t1->Branch("run", &run);
   t1->Branch("event", &event);
   t1->Branch("ls", &ls);
+  t1->Branch("cent", &cent);
   t1->Branch("fromFullAOD", &fromFullAOD);
   t1->Branch("BSpot_x", &BSpot_x);
   t1->Branch("BSpot_y", &BSpot_y);
@@ -120,6 +121,7 @@ void NtupleContent::ClearBranches() {
   run = -1;
   event = -1;
   ls = -1;
+  cent = -1;
   BSpot_x = -99;
   BSpot_y = -99;
   BSpot_z = -99;
