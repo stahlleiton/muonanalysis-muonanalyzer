@@ -517,8 +517,7 @@ void MuonFullAODAnalyzer::analyze(const edm::Event& iEvent,
       // fill probe information
       nt.probe_isMatchedGen = probe.genParticleRef().isNonnull();
       for (const auto& f : HLTFilters_["probe"])
-        if (!probe.triggerObjectMatchesByFilter(f).empty())
-          nt.probe_trg.at(f) = true;
+        nt.probe_trg.at(f) = !probe.triggerObjectMatchesByFilter(f).empty();
       FillProbeBranches(probe, *tracks, nt, probe.userInt("isMuon"));
       if (debug_ > 0)
         std::cout << "  " << (probe.userInt("isMuon")?"S":"Uns") << "uccessful"
